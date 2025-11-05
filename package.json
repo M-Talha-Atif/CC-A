@@ -1,0 +1,42 @@
+{
+  "name": "creative-network-app",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --turbopack",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "deploy": "npm run build && pm2 delete all || true && pm2 start npm --name app -- run start"
+  },
+  "dependencies": {
+    "@hookform/resolvers": "^5.1.1",
+    "@react-oauth/google": "^0.12.2",
+    "@vercel/og": "^0.8.1",
+    "axios": "^1.10.0",
+    "framer-motion": "^12.23.9",
+    "js-cookie": "^3.0.5",
+    "lucide-react": "^0.522.0",
+    "next": "15.3.4",
+    "next-auth": "^4.24.11",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-hook-form": "^7.58.1",
+    "react-hot-toast": "^2.5.2",
+    "socket.io-client": "^4.8.1",
+    "sonner": "^2.0.5",
+    "zod": "^3.25.67",
+    "zustand": "^5.0.5"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3",
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20.19.1",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "15.3.4",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}

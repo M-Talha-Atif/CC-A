@@ -1,0 +1,3590 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
+// "use server";
+
+// import axios from "axios";
+// import { cookies } from "next/headers";
+// import axiosInstance from "./src/utils/axiosInstance";
+// import { tokenStorage } from "@/utils/tokenStorage";
+
+// export const login = async ({ email, password }) => {
+//   const { data } = await axios.post(
+//     `${process.env.NEXT_PUBLIC_BASE_URL}api/auth/login`,
+//     { email, password },
+//     {
+//       headers: {
+//         "Content-Type": "application/json",
+//       },
+//     }
+//   );
+//   // Fixed: Use data.accessToken instead of data.token
+//   (await cookies()).set("token", data.accessToken);
+//   return data;
+// };
+
+// export const logout = async () => {
+//   (await cookies()).delete("token");
+//   return true;
+// };
+
+// // export const register = async ({ email, password, userType }) => {
+// //   try {
+// //     const { data } = await axios.post(
+// //       `${process.env.NEXT_PUBLIC_BASE_URL}api/auth/register`,
+// //       { email, password, userType },
+// //       {
+// //         headers: {
+// //           "Content-Type": "application/json",
+// //         },
+// //       }
+// //     );
+
+// //     // Set both tokens in cookies
+// //     const cookieOptions = {
+// //       httpOnly: true,
+// //       secure: process.env.NODE_ENV === "production",
+// //       sameSite: "lax",
+// //       path: "/",
+// //     };
+
+// //     cookies().set("token", data.data.accessToken, {
+// //       ...cookieOptions,
+// //       maxAge: 60 * 60, // 1 hour
+// //     });
+
+// //     cookies().set("refreshToken", data.data.refreshToken, {
+// //       ...cookieOptions,
+// //       maxAge: 30 * 24 * 60 * 60, // 30 days
+// //     });
+
+// //     return {
+// //       success: true,
+// //       data: data.data,
+// //       message: data.message || "Registration successful!",
+// //     };
+// //   } catch (error) {
+// //     console.error("Registration error:", error);
+
+// //     const message =
+// //       error.response?.data?.message ||
+// //       error.response?.data?.errors?.[0]?.message ||
+// //       "Registration failed. Please try again.";
+
+// //     return {
+// //       success: false,
+// //       message,
+// //     };
+// //   }
+// // };
+
+// // Client-side refresh token function
+
+// export const register = async ({ email, password, userType }) => {
+//   try {
+//     const { data } = await axiosInstance.post("api/auth/register", {
+//       email,
+//       password,
+//       userType,
+//     });
+
+//     // Tokens are already set in cookies by the server
+//     // No need to store them manually
+
+//     return {
+//       success: true,
+//       data: data.data,
+//       message: data.message || "Registration successful!",
+//     };
+//   } catch (error) {
+//     return {
+//       success: false,
+//       message: error.response?.data?.message || "Registration failed",
+//     };
+//   }
+// };
+
+// export const googleLoginCreative = async (googleToken, userType) => {
+//   try {
+//     const { data } = await axiosInstance.post("api/auth/google/creative", {
+//       googleToken,
+//       userType,
+//     });
+
+//     if (data.data.accessToken && data.data.refreshToken) {
+//       tokenStorage.setTokens(data.data.accessToken, data.data.refreshToken);
+//     }
+
+//     return {
+//       success: true,
+//       data: data.data,
+//     };
+//   } catch (error) {
+//     return {
+//       success: false,
+//       error: {
+//         message: error.response?.data?.message || "Google login failed",
+//         errorCode: error.response?.data?.errorCode,
+//       },
+//     };
+//   }
+// };
+
+// export const refreshUserToken = async () => {
+//   try {
+//     // Get refresh token from cookies (client-side)
+//     const refreshToken = document.cookie
+//       .split("; ")
+//       .find((row) => row.startsWith("refreshToken="))
+//       ?.split("=")[1];
+
+//     if (!refreshToken) {
+//       throw new Error("No refresh token available");
+//     }
+
+//     const { data } = await axios.post(
+//       `${process.env.NEXT_PUBLIC_BASE_URL}api/auth/refresh-token`,
+//       { refreshToken },
+//       {
+//         headers: {
+//           "Content-Type": "application/json",
+//         },
+//         withCredentials: true,
+//       }
+//     );
+
+//     return {
+//       success: true,
+//       data: data.data,
+//       message: data.message || "Token refreshed successfully",
+//     };
+//   } catch (error) {
+//     console.error("Token refresh error:", error);
+
+//     const message = error.response?.data?.message || "Token refresh failed";
+
+//     return {
+//       success: false,
+//       message,
+//     };
+//   }
+// };
+
+// // Server-side token refresh
+// export const refreshTokenServer = async () => {
+//   try {
+//     const cookieStore = await cookies();
+//     const refreshToken = cookieStore.get("refreshToken")?.value;
+
+//     if (!refreshToken) {
+//       return {
+//         success: false,
+//         message: "No refresh token available",
+//       };
+//     }
+
+//     const { data } = await axios.post(
+//       `${process.env.NEXT_PUBLIC_BASE_URL}api/auth/refresh-token`,
+//       { refreshToken },
+//       {
+//         headers: {
+//           "Content-Type": "application/json",
+//         },
+//       }
+//     );
+
+//     // Update cookies with new tokens
+//     const cookieOptions = {
+//       httpOnly: true,
+//       secure: process.env.NODE_ENV === "production",
+//       sameSite: "lax",
+//       path: "/",
+//     };
+
+//     cookieStore.set("token", data.data.accessToken, {
+//       ...cookieOptions,
+//       maxAge: 60 * 60, // 1 hour
+//     });
+
+//     cookieStore.set("refreshToken", data.data.refreshToken, {
+//       ...cookieOptions,
+//       maxAge: 30 * 24 * 60 * 60, // 30 days
+//     });
+
+//     return {
+//       success: true,
+//       data: data.data,
+//       message: "Token refreshed successfully",
+//     };
+//   } catch (error) {
+//     console.error("Server token refresh error:", error);
+
+//     const message = error.response?.data?.message || "Token refresh failed";
+
+//     return {
+//       success: false,
+//       message,
+//     };
+//   }
+// };
+
+// export const checkEmailExists = async (email) => {
+//   try {
+//     const { data } = await axios.post(
+//       `${process.env.NEXT_PUBLIC_BASE_URL}api/auth/check-email`,
+//       { email },
+//       {
+//         headers: {
+//           "Content-Type": "application/json",
+//         },
+//       }
+//     );
+
+//     return {
+//       success: true,
+//       exists: data.data.exists,
+//     };
+//   } catch (error) {
+//     console.error("Check email error:", error);
+//     return {
+//       success: false,
+//       message: error.response?.data?.message || "Failed to check email",
+//     };
+//   }
+// };
+
+// export const verifyOTP = async ({ phone, otpCode }) => {
+//   const { data } = await axios.post(
+//     `${process.env.NEXT_PUBLIC_BASE_URL}api/auth/verify-otp`,
+//     { phone, otpCode },
+//     {
+//       headers: {
+//         Authorization: `Bearer ${(await cookies()).get("token")?.value}`,
+//         "Content-Type": "application/json",
+//       },
+//     }
+//   );
+//   return data;
+// };
+
+// // export const googleLoginCreative = async (googleToken, userType) => {
+// //   try {
+// //     const { data } = await axios.post(
+// //       `${process.env.NEXT_PUBLIC_BASE_URL}api/auth/google-login-creative`,
+// //       {
+// //         googleToken,
+// //         userType,
+// //       },
+// //       {
+// //         headers: {
+// //           "Content-Type": "application/json",
+// //         },
+// //       }
+// //     );
+
+// //     return { success: true, data };
+// //   } catch (error) {
+// //     console.error("API Error Details:", error?.response?.data || error.message);
+
+// //     // RETURN error instead of throwing
+// //     if (axios.isAxiosError(error) && error.response?.data) {
+// //       const responseData = error.response.data;
+
+// //       return {
+// //         success: false,
+// //         error: {
+// //           message: responseData.message || "Google login failed",
+// //           status: error.response.status,
+// //           errorCode: responseData.errorCode || "API_ERROR",
+// //         },
+// //       };
+// //     }
+
+// //     // For non-axios errors, still return error
+// //     return {
+// //       success: false,
+// //       error: {
+// //         message: error.message || "An unexpected error occurred.",
+// //         status: 500,
+// //         errorCode: "UNEXPECTED",
+// //       },
+// //     };
+// //   }
+// // };
+
+// export const googleLoginCouple = async (googleToken, userType) => {
+//   try {
+//     const { data } = await axios.post(
+//       `${process.env.NEXT_PUBLIC_BASE_URL}api/auth/google-login-couple`,
+//       {
+//         googleToken,
+//         userType, // Add userType to the request body
+//       },
+//       {
+//         headers: {
+//           "Content-Type": "application/json",
+//         },
+//       }
+//     );
+
+//     return data;
+//   } catch (error) {
+//     console.error("API Error Details:", error?.response?.data || error.message);
+
+//     // RETURN error instead of throwing
+//     if (axios.isAxiosError(error) && error.response?.data) {
+//       const responseData = error.response.data;
+
+//       return {
+//         success: false,
+//         error: {
+//           message: responseData.message || "Google login failed",
+//           status: error.response.status,
+//           errorCode: responseData.errorCode || "API_ERROR",
+//         },
+//       };
+//     }
+
+//     // For non-axios errors, still return error
+//     return {
+//       success: false,
+//       error: {
+//         message: error.message || "An unexpected error occurred.",
+//         status: 500,
+//         errorCode: "UNEXPECTED",
+//       },
+//     };
+//   }
+// };
+
+// export const handleGoogleToken = async (accessToken) => {
+//   (await cookies()).set("token", accessToken);
+//   return true;
+// };
+
+// export const sendVerificationEmail = async (email, userId) => {
+//   try {
+//     const { data } = await axios.post(
+//       `${process.env.NEXT_PUBLIC_BASE_URL}api/auth/send-verification-email`,
+//       { email, userId },
+//       {
+//         headers: {
+//           "Content-Type": "application/json",
+//         },
+//       }
+//     );
+
+//     return {
+//       success: true,
+//       data: data.data,
+//       message: data.message || "Verification email sent!",
+//     };
+//   } catch (error) {
+//     console.error("Send verification email error:", error);
+
+//     const message =
+//       error.response?.data?.message ||
+//       "Failed to send verification email. Please try again.";
+
+//     return {
+//       success: false,
+//       message,
+//     };
+//   }
+// };
+
+// export const verifyEmailToken = async (token) => {
+//   try {
+//     const { data } = await axios.get(
+//       `${process.env.NEXT_PUBLIC_BASE_URL}api/auth/verify-email/${token}`
+//     );
+
+//     return {
+//       success: true,
+//       data,
+//       message: "Email verified successfully!",
+//     };
+//   } catch (error) {
+//     console.error("Verify email token error:", error);
+
+//     return {
+//       success: false,
+//       message: "Failed to verify email.",
+//     };
+//   }
+// };
+
+// export const checkEmailVerificationStatus = async () => {
+//   try {
+//     const { data } = await axios.get(
+//       `${process.env.NEXT_PUBLIC_BASE_URL}api/auth/check-email-verification`,
+//       {
+//         headers: {
+//           Authorization: `Bearer ${(await cookies()).get("token")?.value}`,
+//           "Content-Type": "application/json",
+//         },
+//         withCredentials: true, // Ensure cookies/token are sent if auth uses them
+//       }
+//     );
+
+//     return {
+//       success: true,
+//       data: data.data,
+//       message: data.message || "Email verification status fetched!",
+//     };
+//   } catch (error) {
+//     console.error("Check email verification status error:", error);
+
+//     const message =
+//       error.response?.data?.message ||
+//       "Failed to check email verification status. Please try again.";
+
+//     return {
+//       success: false,
+//       message,
+//     };
+//   }
+// };
+
+// export const resendVerificationEmail = async ({ email }) => {
+//   try {
+//     const { data } = await axios.post(
+//       `${process.env.NEXT_PUBLIC_BASE_URL}api/auth/resend-verification-email`,
+//       { email },
+//       {
+//         headers: {
+//           "Content-Type": "application/json",
+//         },
+//       }
+//     );
+
+//     return {
+//       success: true,
+//       data: data.data,
+//       message: data.message || "Verification email resent!",
+//     };
+//   } catch (error) {
+//     console.error("Resend verification email error:", error);
+
+//     const message =
+//       error.response?.data?.message ||
+//       "Failed to resend verification email. Please try again.";
+
+//     return {
+//       success: false,
+//       message,
+//     };
+//   }
+// };
+
+// export const exchangeInstagramToken = async ({
+//   code,
+//   redirect_uri,
+//   accessToken,
+// }) => {
+//   try {
+//     const res = await axios.post(
+//       `${process.env.NEXT_PUBLIC_BASE_URL}api/auth/instagram/exchange-token`,
+//       {
+//         code,
+//         redirect_uri,
+//       },
+//       {
+//         headers: {
+//           "Content-Type": "application/json",
+//           ...(accessToken && {
+//             Authorization: `Bearer ${accessToken}`,
+//           }),
+//         },
+//       }
+//     );
+
+//     return res.data;
+//   } catch (error) {
+//     if (error.response) {
+//       console.error("❌ API error response:", error.response.data);
+//       throw new Error(
+//         `Instagram token exchange failed: ${JSON.stringify(
+//           error.response.data
+//         )}`
+//       );
+//     } else {
+//       console.error("❌ API error:", error.message);
+//       throw new Error(`Instagram token exchange failed: ${error.message}`);
+//     }
+//   }
+// };
+
+// export const refreshAccessToken = async () => {
+//   try {
+//     // Get refresh token from cookies
+//     const cookieStore = cookies();
+//     const refreshToken = cookieStore.get("refreshToken")?.value;
+
+//     if (!refreshToken) {
+//       throw new Error("No refresh token available");
+//     }
+
+//     const response = await axios.post(
+//       `${process.env.NEXT_PUBLIC_BASE_URL}api/auth/refresh`,
+//       { refreshToken },
+//       {
+//         headers: {
+//           "Content-Type": "application/json",
+//         },
+//       }
+//     );
+
+//     if (response.data.success) {
+//       // Update tokens in cookies
+//       const { accessToken, refreshToken: newRefreshToken } = response.data.data;
+
+//       // Set cookies (this would work differently in server components)
+//       cookies().set("token", accessToken, {
+//         httpOnly: true,
+//         secure: process.env.NODE_ENV === "production",
+//         maxAge: 60 * 60, // 1 hour
+//         path: "/",
+//       });
+
+//       cookies().set("refreshToken", newRefreshToken, {
+//         httpOnly: true,
+//         secure: process.env.NODE_ENV === "production",
+//         maxAge: 60 * 60 * 24 * 30, // 30 days
+//         path: "/",
+//       });
+
+//       return accessToken;
+//     }
+
+//     throw new Error("Token refresh failed");
+//   } catch (error) {
+//     console.error("Refresh token error:", error);
+//     throw error;
+//   }
+// };
+
+// export const verifyReferralCode = async ({ referralCode }) => {
+//   const { data } = await axios.post(
+//     `${process.env.NEXT_PUBLIC_BASE_URL}api/auth/verify-referral`,
+//     { referralCode },
+//     {
+//       headers: {
+//         Authorization: `Bearer ${(await cookies()).get("token")?.value}`,
+//         "Content-Type": "application/json",
+//       },
+//     }
+//   );
+//   return data;
+// };
+
+// export const storePhoneNumber = async ({ phone }) => {
+//   const { data } = await axios.post(
+//     `${process.env.NEXT_PUBLIC_BASE_URL}api/auth/store-phone`,
+//     { phone },
+//     {
+//       headers: {
+//         Authorization: `Bearer ${(await cookies()).get("token")?.value}`,
+//         "Content-Type": "application/json",
+//       },
+//     }
+//   );
+//   return data;
+// };
+
+// export const completeProfile = async ({
+//   businessName,
+//   website,
+//   instagram,
+//   creativeDomains,
+//   referralCode,
+// }) => {
+//   const { data } = await axios.post(
+//     // Fixed: This should probably be complete-profile endpoint, not verify-phone
+//     `${process.env.NEXT_PUBLIC_BASE_URL}api/auth/complete-profile`,
+//     { businessName, website, instagram, creativeDomains, referralCode },
+//     {
+//       headers: {
+//         Authorization: `Bearer ${(await cookies()).get("token")?.value}`,
+//         "Content-Type": "application/json",
+//       },
+//     }
+//   );
+//   return data;
+// };
+
+// export const forgotPassword = async ({ email }) => {
+//   try {
+//     const { data } = await axios.post(
+//       `${process.env.NEXT_PUBLIC_BASE_URL}api/auth/forgot-password`,
+//       { email },
+//       {
+//         headers: {
+//           "Content-Type": "application/json",
+//         },
+//       }
+//     );
+
+//     return {
+//       success: true,
+//       data: data.data,
+//       message:
+//         data.message ||
+//         "If an account with this email exists, you will receive a password reset link shortly.",
+//     };
+//   } catch (error) {
+//     console.error("Forgot password error:", error);
+
+//     const message =
+//       error.response?.data?.message ||
+//       error.response?.data?.errors?.[0]?.message ||
+//       "Failed to send password reset link. Please try again.";
+
+//     return {
+//       success: false,
+//       message,
+//     };
+//   }
+// };
+
+// export const resetPassword = async ({ token, password }) => {
+//   console.log(token, password);
+//   try {
+//     const { data } = await axios.post(
+//       `${process.env.NEXT_PUBLIC_BASE_URL}api/auth/reset-password`,
+//       { token, password },
+//       {
+//         headers: {
+//           "Content-Type": "application/json",
+//         },
+//       }
+//     );
+
+//     return {
+//       success: true,
+//       data: data.data,
+//       message:
+//         data.message ||
+//         "Password has been reset successfully. You can now log in with your new password.",
+//     };
+//   } catch (error) {
+//     console.error("Reset password error:", error);
+
+//     const message =
+//       error.response?.data?.message ||
+//       error.response?.data?.errors?.[0]?.message ||
+//       "Failed to reset password. Please try again.";
+
+//     return {
+//       success: false,
+//       message,
+//     };
+//   }
+// };
+
+// export const getOnboardingProgress = async () => {
+//   const { data } = await axios.get(
+//     `${process.env.NEXT_PUBLIC_BASE_URL}api/auth/onboarding/progress`,
+//     {
+//       headers: {
+//         Authorization: `Bearer ${(await cookies()).get("token")?.value}`,
+//         "Content-Type": "application/json",
+//       },
+//     }
+//   );
+
+//   return data;
+// };
+
+// export const updateOnboardingProgress = async (
+//   currentStep,
+//   formData,
+//   stepCompleted = null
+// ) => {
+//   const { data } = await axios.post(
+//     `${process.env.NEXT_PUBLIC_BASE_URL}api/auth/onboarding/update-progress`,
+//     {
+//       currentStep,
+//       formData,
+//       stepCompleted,
+//     },
+//     {
+//       headers: {
+//         Authorization: `Bearer ${(await cookies()).get("token")?.value}`,
+//         "Content-Type": "application/json",
+//       },
+//     }
+//   );
+
+//   return data;
+// };
+
+// export const getNextStep = async () => {
+//   const { data } = await axios.get(
+//     `${process.env.NEXT_PUBLIC_BASE_URL}api/auth/onboarding/next-step`,
+//     {
+//       headers: {
+//         Authorization: `Bearer ${(await cookies()).get("token")?.value}`,
+//         "Content-Type": "application/json",
+//       },
+//     }
+//   );
+
+//   return data;
+// };
+
+// export const checkUserStatus = async () => {
+//   const { data } = await axios.get(
+//     `${process.env.NEXT_PUBLIC_BASE_URL}api/auth/check-status`,
+//     {
+//       headers: {
+//         Authorization: `Bearer ${(await cookies()).get("token")?.value}`,
+//         "Content-Type": "application/json",
+//       },
+//     }
+//   );
+//   return data;
+// };
+
+// // export const getRank = async () => {
+// //   const { data } = await axios.get(
+// //     `${process.env.NEXT_PUBLIC_BASE_URL}api/users/rank`,
+// //     {
+// //       headers: {
+// //         Authorization: `Bearer ${(await cookies()).get("token")?.value}`,
+// //         "Content-Type": "application/json",
+// //       },
+// //     }
+// //   );
+// //   return data;
+// // };
+// export const getRank = async () => {
+//   const { data } = await axiosInstance.get(`api/users/rank`);
+//   return data;
+// };
+
+// // export const getPoints = async () => {
+// //   const { data } = await axios.get(
+// //     `${process.env.NEXT_PUBLIC_BASE_URL}api/users/points`,
+// //     {
+// //       headers: {
+// //         Authorization: `Bearer ${(await cookies()).get("token")?.value}`,
+// //         "Content-Type": "application/json",
+// //       },
+// //     }
+// //   );
+// //   return data;
+// // };
+// export const getPoints = async () => {
+//   const { data } = await axiosInstance.get(`api/users/points`);
+//   return data;
+// };
+
+// export const getReferralCode = async () => {
+//   const { data } = await axios.get(
+//     `${process.env.NEXT_PUBLIC_BASE_URL}api/users/referral-code`,
+//     {
+//       headers: {
+//         Authorization: `Bearer ${(await cookies()).get("token")?.value}`,
+//         "Content-Type": "application/json",
+//       },
+//     }
+//   );
+//   return data;
+// };
+
+// const makeAuthenticatedRequest = async (url, options = {}) => {
+//   const cookieStore = await cookies();
+//   let token = cookieStore.get("token")?.value;
+
+//   try {
+//     // First attempt with existing token
+//     const response = await axios({
+//       url,
+//       headers: {
+//         ...(token && { Authorization: `Bearer ${token}` }),
+//         "Content-Type": "application/json",
+//         ...options.headers,
+//       },
+//       timeout: 30000,
+//       ...options,
+//     });
+
+//     return { success: true, data: response.data };
+//   } catch (error) {
+//     // If token expired (401), try to refresh and retry
+//     if (error.response?.status === 401 && !options.skipRefresh) {
+//       console.log("Token expired, attempting refresh...");
+
+//       const refreshResult = await refreshTokenServer();
+
+//       if (refreshResult.success) {
+//         // Retry with new token
+//         const newToken = cookieStore.get("token")?.value;
+
+//         try {
+//           const retryResponse = await axios({
+//             url,
+//             headers: {
+//               ...(newToken && { Authorization: `Bearer ${newToken}` }),
+//               "Content-Type": "application/json",
+//               ...options.headers,
+//             },
+//             timeout: 30000,
+//             ...options,
+//             skipRefresh: true, // Prevent infinite retry loop
+//           });
+
+//           return { success: true, data: retryResponse.data };
+//         } catch (retryError) {
+//           throw retryError;
+//         }
+//       } else {
+//         // Refresh failed, throw original error
+//         throw error;
+//       }
+//     } else {
+//       throw error;
+//     }
+//   }
+// };
+
+// export const globalSearch = async (
+//   query,
+//   page = 1,
+//   limit = 10,
+//   sortBy = "newest",
+//   categories = ""
+// ) => {
+//   const { data } = await axios.get(
+//     `${process.env.NEXT_PUBLIC_BASE_URL}api/post/global`,
+//     {
+//       params: {
+//         query,
+//         page,
+//         limit,
+//         sortBy,
+//         categories,
+//       },
+//       headers: {
+//         Authorization: `Bearer ${(await cookies()).get("token")?.value}`,
+//         "Content-Type": "application/json",
+//       },
+//     }
+//   );
+//   return data;
+// };
+
+// export const getFeed = async (
+//   category = "New",
+//   page = 1,
+//   limit = 10,
+//   search = "",
+//   sortBy = "newest"
+// ) => {
+//   try {
+//     const params = {
+//       category: String(category || "New"),
+//       page: Number(page) || 1,
+//       limit: Number(limit) || 10,
+//       search: String(search || ""),
+//       sortBy: String(sortBy || "newest"),
+//     };
+
+//     const result = await makeAuthenticatedRequest(
+//       `${process.env.NEXT_PUBLIC_BASE_URL}api/post/feed`,
+//       {
+//         method: "GET",
+//         params,
+//       }
+//     );
+
+//     if (result.success) {
+//       return {
+//         success: true,
+//         posts: result.data.posts || [],
+//         pagination: result.data.pagination || { hasMore: false },
+//         error: null,
+//       };
+//     }
+
+//     throw new Error("Request failed");
+//   } catch (error) {
+//     console.error("getFeed Server Action Error:", error);
+
+//     let errorMessage = "Failed to fetch feed";
+
+//     if (error.response?.status === 401) {
+//       errorMessage = "Authentication required";
+//     } else if (error.response?.status === 403) {
+//       errorMessage = "Access forbidden";
+//     } else if (error.code === "ECONNABORTED") {
+//       errorMessage = "Request timeout";
+//     } else if (error.response?.data?.message) {
+//       errorMessage = error.response.data.message;
+//     } else if (error.message) {
+//       errorMessage = error.message;
+//     }
+
+//     return {
+//       success: false,
+//       posts: [],
+//       pagination: { hasMore: false },
+//       error: errorMessage,
+//     };
+//   }
+// };
+
+// export const getCoupleFeed = async (
+//   page = 1,
+//   limit = 10,
+//   search = "",
+//   sortBy = "newest"
+// ) => {
+//   try {
+//     // CRITICAL: Convert all parameters to primitive values immediately
+//     const params = {
+//       page: Number(page) || 1,
+//       limit: Number(limit) || 10,
+//       search: String(search || ""),
+//       sortBy: String(sortBy || "newest"),
+//     };
+
+//     console.log("Server Action getCoupleFeed - Params:", params);
+
+//     // Get token from server-side cookies (optional for public feed)
+//     const cookieStore = await cookies();
+//     const token = cookieStore.get("token")?.value;
+
+//     const { data } = await axios.get(
+//       `${process.env.NEXT_PUBLIC_BASE_URL}api/post/feed/public/couples`,
+//       {
+//         params,
+//         headers: {
+//           ...(token && { Authorization: `Bearer ${token}` }),
+//           "Content-Type": "application/json",
+//         },
+//         timeout: 30000,
+//       }
+//     );
+
+//     return {
+//       success: true,
+//       posts: data.posts || [],
+//       pagination: data.pagination || { hasMore: false },
+//       error: null,
+//     };
+//   } catch (error) {
+//     console.error("getCoupleFeed Server Action Error:", error);
+
+//     // Return error instead of throwing
+//     let errorMessage = "Failed to fetch couple feed";
+
+//     if (error.response?.status === 401) {
+//       errorMessage = "Authentication required";
+//     } else if (error.response?.status === 403) {
+//       errorMessage = "Access forbidden";
+//     } else if (error.code === "ECONNABORTED") {
+//       errorMessage = "Request timeout";
+//     } else if (error.response?.data?.message) {
+//       errorMessage = error.response.data.message;
+//     } else if (error.message) {
+//       errorMessage = error.message;
+//     }
+
+//     return {
+//       success: false,
+//       posts: [],
+//       pagination: { hasMore: false },
+//       error: errorMessage,
+//     };
+//   }
+// };
+
+// export const createPost = async (payload) => {
+//   try {
+//     const { data } = await axios.post(
+//       `${process.env.NEXT_PUBLIC_BASE_URL}api/post/`,
+//       payload,
+//       {
+//         headers: {
+//           Authorization: `Bearer ${(await cookies()).get("token")?.value}`,
+//           "Content-Type": "application/json",
+//         },
+//       }
+//     );
+//     return { success: true, data };
+//   } catch (error) {
+//     console.error("API Error Details:", error?.response?.data || error.message);
+
+//     // RETURN error instead of throwing
+//     if (axios.isAxiosError(error) && error.response?.data) {
+//       const responseData = error.response.data;
+
+//       return {
+//         success: false,
+//         error: {
+//           message:
+//             responseData.error ||
+//             responseData.message ||
+//             "Failed to create post",
+//           status: error.response.status,
+//           errorCode: responseData.errorCode || "API_ERROR",
+//         },
+//       };
+//     }
+
+//     // For non-axios errors, still return error
+//     return {
+//       success: false,
+//       error: {
+//         message: error.message || "An unexpected error occurred.",
+//         status: 500,
+//         errorCode: "UNEXPECTED",
+//       },
+//     };
+//   }
+// };
+
+// export const checkPostingEligibility = async () => {
+//   try {
+//     const { data } = await axios.get(
+//       `${process.env.NEXT_PUBLIC_BASE_URL}api/post/check-posting-eligibility`,
+//       {
+//         headers: {
+//           Authorization: `Bearer ${(await cookies()).get("token")?.value}`,
+//           "Content-Type": "application/json",
+//         },
+//       }
+//     );
+//     return {
+//       success: true,
+//       data: data,
+//       error: null,
+//     };
+//   } catch (error) {
+//     console.error("checkPostingEligibility API Error:", error);
+//     return {
+//       success: false,
+//       data: null,
+//       error: error.response?.data?.message || "Failed to check eligibility",
+//     };
+//   }
+// };
+
+// export const likePost = async ({ postId }) => {
+//   try {
+//     const { data } = await axios.post(
+//       `${process.env.NEXT_PUBLIC_BASE_URL}api/post/${postId}/like`,
+//       {},
+//       {
+//         headers: {
+//           Authorization: `Bearer ${(await cookies()).get("token")?.value}`,
+//           "Content-Type": "application/json",
+//         },
+//       }
+//     );
+//     return {
+//       success: true,
+//       data: data,
+//       error: null,
+//     };
+//   } catch (error) {
+//     console.error("likePost API Error:", error);
+
+//     let errorMessage = "Failed to like post";
+//     let canUnlike = true;
+
+//     if (error.response?.status === 401) {
+//       errorMessage = "Authentication required";
+//     } else if (error.response?.status === 403) {
+//       errorMessage = "Access forbidden";
+//     } else if (error.response?.status === 400) {
+//       // Handle threshold protection error
+//       if (error.response.data?.canUnlike === false) {
+//         errorMessage =
+//           error.response.data.message ||
+//           error.response.data.error ||
+//           "Cannot unlike - this like maintains the post's threshold status";
+//         canUnlike = false;
+//       } else {
+//         errorMessage =
+//           error.response.data?.message ||
+//           error.response.data?.error ||
+//           "Bad request";
+//       }
+//     } else if (error.code === "ECONNABORTED") {
+//       errorMessage = "Request timeout";
+//     } else if (error.response?.data?.message) {
+//       errorMessage = error.response.data.message;
+//     } else if (error.response?.data?.error) {
+//       errorMessage = error.response.data.error;
+//     } else if (error.message) {
+//       errorMessage = error.message;
+//     }
+
+//     return {
+//       success: false,
+//       data: null,
+//       error: errorMessage,
+//       canUnlike: canUnlike,
+//       statusCode: error.response?.status,
+//     };
+//   }
+// };
+
+// export const savePost = async ({ postId }) => {
+//   const { data } = await axios.post(
+//     `${process.env.NEXT_PUBLIC_BASE_URL}api/post/${postId}/save`,
+//     {},
+//     {
+//       headers: {
+//         Authorization: `Bearer ${(await cookies()).get("token")?.value}`,
+//         "Content-Type": "application/json",
+//       },
+//     }
+//   );
+//   return data;
+// };
+
+// export const votePoll = async (postId, optionIndex, isEdit = false) => {
+//   const { data } = await axios.post(
+//     `${process.env.NEXT_PUBLIC_BASE_URL}api/post/${postId}/vote`,
+//     { optionIndex, isEdit },
+//     {
+//       headers: {
+//         Authorization: `Bearer ${(await cookies()).get("token")?.value}`,
+//         "Content-Type": "application/json",
+//       },
+//     }
+//   );
+//   return data;
+// };
+
+// export const getPost = async (postId) => {
+//   const { data } = await axios.get(
+//     `${process.env.NEXT_PUBLIC_BASE_URL}api/post/${postId}`,
+//     {
+//       headers: {
+//         Authorization: `Bearer ${(await cookies()).get("token")?.value}`,
+//         "Content-Type": "application/json",
+//       },
+//     }
+//   );
+//   return data;
+// };
+
+// export const getPublicPost = async (postId) => {
+//   const { data } = await axios.get(
+//     `${process.env.NEXT_PUBLIC_BASE_URL}api/post/public/${postId}`,
+//     {
+//       headers: {
+//         "Content-Type": "application/json",
+//       },
+//     }
+//   );
+//   return data;
+// };
+
+// export const deletePost = async (postId) => {
+//   const { data } = await axios.delete(
+//     `${process.env.NEXT_PUBLIC_BASE_URL}api/post/${postId}`,
+//     {
+//       headers: {
+//         Authorization: `Bearer ${(await cookies()).get("token")?.value}`,
+//         "Content-Type": "application/json",
+//       },
+//     }
+//   );
+//   return data;
+// };
+
+// export const getSavedPosts = async (query = {}) => {
+//   const queryString = new URLSearchParams(query).toString();
+
+//   const { data } = await axios.get(
+//     `${process.env.NEXT_PUBLIC_BASE_URL}api/post/saved${
+//       queryString ? `?${queryString}` : ""
+//     }`,
+//     {
+//       headers: {
+//         Authorization: `Bearer ${(await cookies()).get("token")?.value}`,
+//         "Content-Type": "application/json",
+//       },
+//     }
+//   );
+//   return data;
+// };
+
+// export const fetchComments = async (postId, page = 1, limit = 20) => {
+//   try {
+//     const token = (await cookies()).get("token")?.value;
+
+//     const { data } = await axios.get(
+//       `${process.env.NEXT_PUBLIC_BASE_URL}api/post/comment/${postId}`,
+//       {
+//         params: { page, limit },
+//         headers: {
+//           Authorization: `Bearer ${token}`,
+//           "Content-Type": "application/json",
+//         },
+//       }
+//     );
+
+//     return data;
+//   } catch (error) {
+//     console.error("fetchComments error:", error);
+
+//     if (axios.isAxiosError(error)) {
+//       if (error.response?.status === 401) {
+//         throw new Error("Unauthorized. Please log in.");
+//       } else {
+//         throw new Error(
+//           error.response?.data?.message || "Failed to fetch comments."
+//         );
+//       }
+//     } else {
+//       throw new Error("An unexpected error occurred.");
+//     }
+//   }
+// };
+
+// export const fetchPublicComments = async (postId, page = 1, limit = 20) => {
+//   try {
+//     const { data } = await axios.get(
+//       `${process.env.NEXT_PUBLIC_BASE_URL}api/post/public/comment/${postId}`,
+//       {
+//         params: { page, limit },
+//       }
+//     );
+
+//     return data;
+//   } catch (error) {
+//     console.error("fetchComments error:", error);
+
+//     if (axios.isAxiosError(error)) {
+//       if (error.response?.status === 401) {
+//         throw new Error("Unauthorized. Please log in.");
+//       } else {
+//         throw new Error(
+//           error.response?.data?.message || "Failed to fetch comments."
+//         );
+//       }
+//     } else {
+//       throw new Error("An unexpected error occurred.");
+//     }
+//   }
+// };
+
+// export const createComment = async (
+//   postId,
+//   content,
+//   parentCommentId = null,
+//   mentions = []
+// ) => {
+//   const { data } = await axios.post(
+//     `${process.env.NEXT_PUBLIC_BASE_URL}api/post/comment/`,
+//     {
+//       postId,
+//       content,
+//       parentCommentId,
+//       mentions,
+//     },
+//     {
+//       headers: {
+//         Authorization: `Bearer ${(await cookies()).get("token")?.value}`,
+//         "Content-Type": "application/json",
+//       },
+//     }
+//   );
+//   return data;
+// };
+
+// export const updateComment = async (commentId, content) => {
+//   const { data } = await axios.put(
+//     `${process.env.NEXT_PUBLIC_BASE_URL}api/post/comments/${commentId}`,
+//     { content },
+//     {
+//       headers: {
+//         Authorization: `Bearer ${(await cookies()).get("token")?.value}`,
+//         "Content-Type": "application/json",
+//       },
+//     }
+//   );
+//   return data;
+// };
+
+// export const deleteComment = async (commentId) => {
+//   const { data } = await axios.delete(
+//     `${process.env.NEXT_PUBLIC_BASE_URL}api/post/comments/${commentId}`,
+//     {
+//       headers: {
+//         Authorization: `Bearer ${(await cookies()).get("token")?.value}`,
+//       },
+//     }
+//   );
+//   return data;
+// };
+
+// export const likeComment = async (commentId) => {
+//   const token = (await cookies()).get("token")?.value;
+
+//   const { data } = await axios.post(
+//     `${process.env.NEXT_PUBLIC_BASE_URL}api/post/comment/${commentId}/like`,
+//     {},
+//     {
+//       headers: {
+//         Authorization: `Bearer ${token}`,
+//         "Content-Type": "application/json",
+//       },
+//     }
+//   );
+
+//   return data;
+// };
+
+// export const searchUsersForMentions = async (query, postId) => {
+//   const { data } = await axios.get(
+//     `${process.env.NEXT_PUBLIC_BASE_URL}api/post/comment/search-users`,
+//     {
+//       params: { query, postId },
+//       headers: {
+//         Authorization: `Bearer ${(await cookies()).get("token")?.value}`,
+//         "Content-Type": "application/json",
+//       },
+//       withCredentials: true,
+//     }
+//   );
+
+//   return data;
+// };
+
+// export const getUsernameForChatroom = async (postId) => {
+//   const { data } = await axios.get(
+//     `${process.env.NEXT_PUBLIC_BASE_URL}api/post/comment/get-username`,
+//     {
+//       params: { postId },
+//       headers: {
+//         Authorization: `Bearer ${(await cookies()).get("token")?.value}`,
+//         "Content-Type": "application/json",
+//       },
+//       withCredentials: true,
+//     }
+//   );
+
+//   return data;
+// };
+
+// export const activateAnonymousMode = async () => {
+//   try {
+//     const { data } = await axios.post(
+//       `${process.env.NEXT_PUBLIC_BASE_URL}api/anon/activate`,
+//       {},
+//       {
+//         headers: {
+//           Authorization: `Bearer ${(await cookies()).get("token")?.value}`,
+//           "Content-Type": "application/json",
+//         },
+//         withCredentials: true,
+//       }
+//     );
+
+//     return { success: true, data };
+//   } catch (error) {
+//     // RETURN error instead of throwing
+//     if (axios.isAxiosError(error) && error.response?.data) {
+//       const responseData = error.response.data;
+
+//       return {
+//         success: false,
+//         error: {
+//           message: responseData.error || "Failed to activate anonymous mode",
+//           status: error.response.status,
+//           errorCode:
+//             responseData.error === "User is already in anonymous mode"
+//               ? "ALREADY_ANONYMOUS"
+//               : "API_ERROR",
+//         },
+//       };
+//     }
+
+//     // For non-axios errors, still return error
+//     return {
+//       success: false,
+//       error: {
+//         message: error.message || "An unexpected error occurred.",
+//         status: 500,
+//         errorCode: "NETWORK_ERROR",
+//       },
+//     };
+//   }
+// };
+
+// export const deactivateAnonymousMode = async () => {
+//   try {
+//     const { data } = await axios.post(
+//       `${process.env.NEXT_PUBLIC_BASE_URL}api/anon/deactivate`,
+//       {},
+//       {
+//         headers: {
+//           Authorization: `Bearer ${(await cookies()).get("token")?.value}`,
+//           "Content-Type": "application/json",
+//         },
+//         withCredentials: true,
+//       }
+//     );
+
+//     return { success: true, data };
+//   } catch (error) {
+//     console.error("API Error Details:", error?.response?.data || error.message);
+
+//     // RETURN error instead of throwing
+//     if (axios.isAxiosError(error) && error.response?.data) {
+//       const responseData = error.response.data;
+
+//       return {
+//         success: false,
+//         error: {
+//           message:
+//             responseData.error ||
+//             responseData.message ||
+//             "Failed to deactivate anonymous mode",
+//           status: error.response.status,
+//           errorCode: responseData.errorCode || "API_ERROR",
+//         },
+//       };
+//     }
+
+//     // For non-axios errors, still return error
+//     return {
+//       success: false,
+//       error: {
+//         message: error.message || "An unexpected error occurred.",
+//         status: 500,
+//         errorCode: "UNEXPECTED",
+//       },
+//     };
+//   }
+// };
+
+// export const getAnonymousStatus = async () => {
+//   try {
+//     const { data } = await axios.get(
+//       `${process.env.NEXT_PUBLIC_BASE_URL}api/anon/status`,
+//       {
+//         headers: {
+//           Authorization: `Bearer ${(await cookies()).get("token")?.value}`,
+//           "Content-Type": "application/json",
+//         },
+//         withCredentials: true,
+//       }
+//     );
+
+//     return { success: true, data };
+//   } catch (error) {
+//     console.error("API Error Details:", error?.response?.data || error.message);
+
+//     // RETURN error instead of throwing
+//     if (axios.isAxiosError(error) && error.response?.data) {
+//       const responseData = error.response.data;
+
+//       return {
+//         success: false,
+//         error: {
+//           message:
+//             responseData.error ||
+//             responseData.message ||
+//             "Failed to get anonymous status",
+//           status: error.response.status,
+//           errorCode: responseData.errorCode || "API_ERROR",
+//         },
+//       };
+//     }
+
+//     // For non-axios errors, still return error
+//     return {
+//       success: false,
+//       error: {
+//         message: error.message || "An unexpected error occurred.",
+//         status: 500,
+//         errorCode: "UNEXPECTED",
+//       },
+//     };
+//   }
+// };
+
+// export const openChatroom = async ({ postId }) => {
+//   const { data } = await axios.post(
+//     `${process.env.NEXT_PUBLIC_BASE_URL}api/post/enter-chatroom`,
+//     { postId },
+//     {
+//       headers: {
+//         Authorization: `Bearer ${(await cookies()).get("token")?.value}`,
+//         "Content-Type": "application/json",
+//       },
+//       withCredentials: true,
+//     }
+//   );
+//   return data;
+// };
+
+// export const getPostCommentCount = async ({ postId }) => {
+//   const { data } = await axios.get(
+//     `${process.env.NEXT_PUBLIC_BASE_URL}api/post/comment-count/${postId}`,
+//     {
+//       headers: {
+//         Authorization: `Bearer ${(await cookies()).get("token")?.value}`,
+//       },
+//       withCredentials: true,
+//     }
+//   );
+//   return data;
+// };
+
+// export const createCreativeInquiry = async (payload) => {
+//   try {
+//     const { data } = await axios.post(
+//       `${process.env.NEXT_PUBLIC_BASE_URL}api/creative-inquiries/create`,
+//       payload,
+//       {
+//         headers: {
+//           Authorization: `Bearer ${(await cookies()).get("token")?.value}`,
+//           "Content-Type": "application/json",
+//         },
+//       }
+//     );
+//     return { success: true, data };
+//   } catch (error) {
+//     console.error(
+//       "Creative Inquiry API Error:",
+//       error?.response?.data || error.message
+//     );
+
+//     if (axios.isAxiosError(error) && error.response?.data) {
+//       const responseData = error.response.data;
+//       return {
+//         success: false,
+//         error: {
+//           message:
+//             responseData.error ||
+//             responseData.message ||
+//             "Failed to create creative inquiry",
+//           status: error.response.status,
+//           errorCode: responseData.errorCode || "API_ERROR",
+//         },
+//       };
+//     }
+
+//     return {
+//       success: false,
+//       error: {
+//         message: error.message || "An unexpected error occurred.",
+//         status: 500,
+//         errorCode: "UNEXPECTED",
+//       },
+//     };
+//   }
+// };
+
+// export const createPaymentSession = async (payload) => {
+//   try {
+//     const { data } = await axios.post(
+//       `${process.env.NEXT_PUBLIC_BASE_URL}api/creative-inquiries/payment`,
+//       payload,
+//       {
+//         headers: {
+//           Authorization: `Bearer ${(await cookies()).get("token")?.value}`,
+//           "Content-Type": "application/json",
+//         },
+//       }
+//     );
+//     return { success: true, data };
+//   } catch (error) {
+//     console.error(
+//       "Creative Inquiry API Error:",
+//       error?.response?.data || error.message
+//     );
+
+//     if (axios.isAxiosError(error) && error.response?.data) {
+//       const responseData = error.response.data;
+//       return {
+//         success: false,
+//         error: {
+//           message:
+//             responseData.error ||
+//             responseData.message ||
+//             "Failed to create creative inquiry",
+//           status: error.response.status,
+//           errorCode: responseData.errorCode || "API_ERROR",
+//         },
+//       };
+//     }
+
+//     return {
+//       success: false,
+//       error: {
+//         message: error.message || "An unexpected error occurred.",
+//         status: 500,
+//         errorCode: "UNEXPECTED",
+//       },
+//     };
+//   }
+// };
+
+// export const handlePaymentSuccess = async (sessionId, inquiryId) => {
+//   try {
+//     const { data } = await axios.get(
+//       `${process.env.NEXT_PUBLIC_BASE_URL}api/creative-inquiries/payment/success?session_id=${sessionId}&inquiry_id=${inquiryId}`,
+//       {
+//         headers: {
+//           Authorization: `Bearer ${(await cookies()).get("token")?.value}`,
+//           "Content-Type": "application/json",
+//         },
+//       }
+//     );
+//     return { success: true, data };
+//   } catch (error) {
+//     console.error(
+//       "Payment Success API Error:",
+//       error?.response?.data || error.message
+//     );
+
+//     if (axios.isAxiosError(error) && error.response?.data) {
+//       const responseData = error.response.data;
+//       return {
+//         success: false,
+//         error: {
+//           message:
+//             responseData.error ||
+//             responseData.message ||
+//             "Failed to verify payment",
+//           status: error.response.status,
+//           errorCode: responseData.errorCode || "API_ERROR",
+//         },
+//       };
+//     }
+
+//     return {
+//       success: false,
+//       error: {
+//         message: error.message || "An unexpected error occurred.",
+//         status: 500,
+//         errorCode: "UNEXPECTED",
+//       },
+//     };
+//   }
+// };
+
+// export const handlePaymentCancel = async (inquiryId) => {
+//   try {
+//     const { data } = await axios.get(
+//       `${process.env.NEXT_PUBLIC_BASE_URL}api/creative-inquiries/payment/cancel?inquiry_id=${inquiryId}`,
+//       {
+//         headers: {
+//           Authorization: `Bearer ${(await cookies()).get("token")?.value}`,
+//           "Content-Type": "application/json",
+//         },
+//       }
+//     );
+//     return { success: true, data };
+//   } catch (error) {
+//     console.error(
+//       "Payment Cancel API Error:",
+//       error?.response?.data || error.message
+//     );
+
+//     if (axios.isAxiosError(error) && error.response?.data) {
+//       const responseData = error.response.data;
+//       return {
+//         success: false,
+//         error: {
+//           message:
+//             responseData.error ||
+//             responseData.message ||
+//             "Failed to cancel payment",
+//           status: error.response.status,
+//           errorCode: responseData.errorCode || "API_ERROR",
+//         },
+//       };
+//     }
+
+//     return {
+//       success: false,
+//       error: {
+//         message: error.message || "An unexpected error occurred.",
+//         status: 500,
+//         errorCode: "UNEXPECTED",
+//       },
+//     };
+//   }
+// };
+
+// export const checkUserCompletedInquiries = async () => {
+//   try {
+//     const { data } = await axios.get(
+//       `${process.env.NEXT_PUBLIC_BASE_URL}api/creative-inquiries/check-completed`,
+//       {
+//         headers: {
+//           Authorization: `Bearer ${(await cookies()).get("token")?.value}`,
+//           "Content-Type": "application/json",
+//         },
+//       }
+//     );
+//     return { success: true, data };
+//   } catch (error) {
+//     console.error(
+//       "Get User Inquiries API Error:",
+//       error?.response?.data || error.message
+//     );
+
+//     if (axios.isAxiosError(error) && error.response?.data) {
+//       const responseData = error.response.data;
+//       return {
+//         success: false,
+//         error: {
+//           message:
+//             responseData.error ||
+//             responseData.message ||
+//             "Failed to fetch inquiries",
+//           status: error.response.status,
+//           errorCode: responseData.errorCode || "API_ERROR",
+//         },
+//       };
+//     }
+
+//     return {
+//       success: false,
+//       error: {
+//         message: error.message || "An unexpected error occurred.",
+//         status: 500,
+//         errorCode: "UNEXPECTED",
+//       },
+//     };
+//   }
+// };
+
+// export const getUserInquiries = async (options = {}) => {
+//   try {
+//     const { status, limit = 20, offset = 0 } = options;
+//     let queryParams = `?limit=${limit}&offset=${offset}`;
+
+//     if (status) {
+//       queryParams += `&status=${status}`;
+//     }
+
+//     const { data } = await axios.get(
+//       `${process.env.NEXT_PUBLIC_BASE_URL}api/creative-inquiries/user-inquiries${queryParams}`,
+//       {
+//         headers: {
+//           Authorization: `Bearer ${(await cookies()).get("token")?.value}`,
+//           "Content-Type": "application/json",
+//         },
+//       }
+//     );
+//     return { success: true, data };
+//   } catch (error) {
+//     console.error(
+//       "Get User Inquiries API Error:",
+//       error?.response?.data || error.message
+//     );
+
+//     if (axios.isAxiosError(error) && error.response?.data) {
+//       const responseData = error.response.data;
+//       return {
+//         success: false,
+//         error: {
+//           message:
+//             responseData.error ||
+//             responseData.message ||
+//             "Failed to fetch inquiries",
+//           status: error.response.status,
+//           errorCode: responseData.errorCode || "API_ERROR",
+//         },
+//       };
+//     }
+
+//     return {
+//       success: false,
+//       error: {
+//         message: error.message || "An unexpected error occurred.",
+//         status: 500,
+//         errorCode: "UNEXPECTED",
+//       },
+//     };
+//   }
+// };
+
+// export const getInquiryDetails = async (inquiryId) => {
+//   try {
+//     const { data } = await axios.get(
+//       `${process.env.NEXT_PUBLIC_BASE_URL}api/creative-inquiries/${inquiryId}`,
+//       {
+//         headers: {
+//           Authorization: `Bearer ${(await cookies()).get("token")?.value}`,
+//           "Content-Type": "application/json",
+//         },
+//       }
+//     );
+//     return { success: true, data };
+//   } catch (error) {
+//     console.error(
+//       "Get Inquiry Details API Error:",
+//       error?.response?.data || error.message
+//     );
+
+//     if (axios.isAxiosError(error) && error.response?.data) {
+//       const responseData = error.response.data;
+//       return {
+//         success: false,
+//         error: {
+//           message:
+//             responseData.error ||
+//             responseData.message ||
+//             "Failed to fetch inquiry details",
+//           status: error.response.status,
+//           errorCode: responseData.errorCode || "API_ERROR",
+//         },
+//       };
+//     }
+
+//     return {
+//       success: false,
+//       error: {
+//         message: error.message || "An unexpected error occurred.",
+//         status: 500,
+//         errorCode: "UNEXPECTED",
+//       },
+//     };
+//   }
+// };
+
+// export const storeChatData = async (payload) => {
+//   try {
+//     const { data } = await axios.post(
+//       `${process.env.NEXT_PUBLIC_BASE_URL}api/creative-inquiries/store-chat`,
+//       payload,
+//       {
+//         headers: {
+//           Authorization: `Bearer ${(await cookies()).get("token")?.value}`,
+//           "Content-Type": "application/json",
+//         },
+//       }
+//     );
+//     return { success: true, data };
+//   } catch (error) {
+//     console.error(
+//       "Store Chat Data API Error:",
+//       error?.response?.data || error.message
+//     );
+
+//     if (axios.isAxiosError(error) && error.response?.data) {
+//       const responseData = error.response.data;
+//       return {
+//         success: false,
+//         error: {
+//           message:
+//             responseData.error ||
+//             responseData.message ||
+//             "Failed to store chat data",
+//           status: error.response.status,
+//           errorCode: responseData.errorCode || "API_ERROR",
+//         },
+//       };
+//     }
+
+//     return {
+//       success: false,
+//       error: {
+//         message: error.message || "An unexpected error occurred.",
+//         status: 500,
+//         errorCode: "UNEXPECTED",
+//       },
+//     };
+//   }
+// };
+
+// export const getNotifications = async (limit = 20, offset = 0) => {
+//   const { data } = await axios.get(
+//     `${process.env.NEXT_PUBLIC_BASE_URL}api/notifications?limit=${limit}&offset=${offset}`,
+//     {
+//       headers: {
+//         Authorization: `Bearer ${(await cookies()).get("token")?.value}`,
+//         "Content-Type": "application/json",
+//       },
+//     }
+//   );
+//   return data;
+// };
+
+// export const getUnreadCount = async () => {
+//   const { data } = await axios.get(
+//     `${process.env.NEXT_PUBLIC_BASE_URL}api/notifications/unread-count`,
+//     {
+//       headers: {
+//         Authorization: `Bearer ${(await cookies()).get("token")?.value}`,
+//         "Content-Type": "application/json",
+//       },
+//     }
+//   );
+//   return data;
+// };
+
+// export const markNotificationAsRead = async (notificationId) => {
+//   const { data } = await axios.patch(
+//     `${process.env.NEXT_PUBLIC_BASE_URL}api/notifications/${notificationId}/read`,
+//     {},
+//     {
+//       headers: {
+//         Authorization: `Bearer ${(await cookies()).get("token")?.value}`,
+//         "Content-Type": "application/json",
+//       },
+//     }
+//   );
+//   return data;
+// };
+
+// export const markAllNotificationsAsRead = async () => {
+//   const { data } = await axios.patch(
+//     `${process.env.NEXT_PUBLIC_BASE_URL}api/notifications/read-all`,
+//     {},
+//     {
+//       headers: {
+//         Authorization: `Bearer ${(await cookies()).get("token")?.value}`,
+//         "Content-Type": "application/json",
+//       },
+//     }
+//   );
+//   return data;
+// };
+
+// export const deleteNotification = async (notificationId) => {
+//   const { data } = await axios.delete(
+//     `${process.env.NEXT_PUBLIC_BASE_URL}api/notifications/${notificationId}`,
+//     {
+//       headers: {
+//         Authorization: `Bearer ${(await cookies()).get("token")?.value}`,
+//         "Content-Type": "application/json",
+//       },
+//     }
+//   );
+//   return data;
+// };
+
+"use server";
+
+import axios from "axios";
+import { cookies } from "next/headers";
+import axiosInstance from "./src/utils/axiosInstance";
+
+// ==========================================
+// HELPER FUNCTIONS
+// ==========================================
+
+/**
+ * Server-side token refresh using cookies
+ */
+
+export const refreshTokenServer = async () => {
+  try {
+    const cookieStore = await cookies();
+
+    const { data } = await axios.post(
+      `${process.env.NEXT_PUBLIC_BASE_URL}api/auth/refresh-token`,
+      {},
+      {
+        withCredentials: true,
+        headers: {
+          Cookie: cookieStore.toString(),
+        },
+      }
+    );
+
+    // Store new cookies on server side
+    if (data.success && data.data.accessToken && data.data.refreshToken) {
+      cookieStore.set("token", data.data.accessToken, {
+        httpOnly: false, // Must be false to allow client access
+        secure: process.env.NODE_ENV === "production",
+        sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+        maxAge: 7 * 24 * 60 * 60,
+        path: "/",
+      });
+
+      cookieStore.set("refreshToken", data.data.refreshToken, {
+        httpOnly: false,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+        maxAge: 90 * 24 * 60 * 60,
+        path: "/",
+      });
+    }
+
+    return {
+      success: true,
+      data: data.data,
+      message: "Token refreshed successfully",
+    };
+  } catch (error) {
+    console.error("Server token refresh error:", error);
+    return {
+      success: false,
+      message: error.response?.data?.message || "Token refresh failed",
+    };
+  }
+};
+
+/**
+ * Make authenticated server-side request with automatic retry on 401
+ */
+const makeAuthenticatedRequest = async (url, options = {}) => {
+  const cookieStore = await cookies();
+
+  try {
+    const response = await axios({
+      url,
+      headers: {
+        Cookie: cookieStore.toString(),
+        "Content-Type": "application/json",
+        ...options.headers,
+      },
+      timeout: 30000,
+      withCredentials: true,
+      ...options,
+    });
+
+    return { success: true, data: response.data };
+  } catch (error) {
+    if (error.response?.status === 401 && !options.skipRefresh) {
+      console.log("Token expired, attempting refresh...");
+
+      const refreshResult = await refreshTokenServer();
+
+      if (refreshResult.success) {
+        try {
+          const retryResponse = await axios({
+            url,
+            headers: {
+              Cookie: (await cookies()).toString(),
+              "Content-Type": "application/json",
+              ...options.headers,
+            },
+            timeout: 30000,
+            withCredentials: true,
+            ...options,
+            skipRefresh: true,
+          });
+
+          return { success: true, data: retryResponse.data };
+        } catch (retryError) {
+          throw retryError;
+        }
+      } else {
+        throw error;
+      }
+    } else {
+      throw error;
+    }
+  }
+};
+
+// ==========================================
+// AUTHENTICATION ACTIONS
+// ==========================================
+
+export const login = async ({ email, password }) => {
+  try {
+    const { data } = await axios.post(
+      `${process.env.NEXT_PUBLIC_BASE_URL}api/auth/login`,
+      { email, password },
+      {
+        headers: {
+          "Content-Type": "application/json",
+        },
+        withCredentials: true,
+      }
+    );
+
+    return {
+      success: true,
+      data: data.data,
+      message: data.message || "Login successful",
+    };
+  } catch (error) {
+    return {
+      success: false,
+      message: error.response?.data?.message || "Login failed",
+    };
+  }
+};
+
+export const logout = async () => {
+  try {
+    const cookieStore = await cookies();
+    cookieStore.delete("token");
+    cookieStore.delete("refreshToken");
+
+    return { success: true };
+  } catch (error) {
+    console.error("Logout error:", error);
+    return { success: false };
+  }
+};
+
+export const register = async ({ email, password, userType }) => {
+  try {
+    const { data } = await axios.post(
+      `${process.env.NEXT_PUBLIC_BASE_URL}api/auth/register`,
+      { email, password, userType },
+      {
+        headers: {
+          "Content-Type": "application/json",
+        },
+        withCredentials: true,
+      }
+    );
+
+    // Store cookies on server side
+    if (data.success && data.data.accessToken && data.data.refreshToken) {
+      const cookieStore = await cookies();
+
+      cookieStore.set("token", data.data.accessToken, {
+        httpOnly: false,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+        maxAge: 7 * 24 * 60 * 60,
+        path: "/",
+      });
+
+      cookieStore.set("refreshToken", data.data.refreshToken, {
+        httpOnly: false,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+        maxAge: 90 * 24 * 60 * 60,
+        path: "/",
+      });
+    }
+
+    return {
+      success: true,
+      data: data.data,
+      message: data.message || "Registration successful!",
+    };
+  } catch (error) {
+    return {
+      success: false,
+      message: error.response?.data?.message || "Registration failed",
+    };
+  }
+};
+
+export const googleLoginCreative = async (googleToken, userType) => {
+  try {
+    const { data } = await axios.post(
+      `${process.env.NEXT_PUBLIC_BASE_URL}api/auth/google/creative`,
+      { googleToken, userType },
+      {
+        headers: {
+          "Content-Type": "application/json",
+        },
+        withCredentials: true,
+      }
+    );
+
+    return {
+      success: true,
+      data: data.data,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: {
+        message: error.response?.data?.message || "Google login failed",
+        errorCode: error.response?.data?.errorCode,
+      },
+    };
+  }
+};
+
+export const googleLoginCouple = async (googleToken, userType) => {
+  try {
+    const { data } = await axios.post(
+      `${process.env.NEXT_PUBLIC_BASE_URL}api/auth/google-login-couple`,
+      { googleToken, userType },
+      {
+        headers: {
+          "Content-Type": "application/json",
+        },
+        withCredentials: true,
+      }
+    );
+
+    return {
+      success: true,
+      data: data.data,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: {
+        message: error.response?.data?.message || "Google login failed",
+        errorCode: error.response?.data?.errorCode || "API_ERROR",
+      },
+    };
+  }
+};
+
+export const checkEmailExists = async (email) => {
+  try {
+    const { data } = await axios.post(
+      `${process.env.NEXT_PUBLIC_BASE_URL}api/auth/check-email`,
+      { email },
+      {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    return {
+      success: true,
+      exists: data.data.exists,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      message: error.response?.data?.message || "Failed to check email",
+    };
+  }
+};
+
+export const verifyReferralCode = async ({ referralCode }) => {
+  const result = await makeAuthenticatedRequest(
+    `${process.env.NEXT_PUBLIC_BASE_URL}api/auth/verify-referral`,
+    {
+      method: "POST",
+      data: { referralCode },
+    }
+  );
+
+  if (result.success) {
+    return result.data;
+  }
+
+  throw new Error("Failed to verify referral code");
+};
+
+export const storePhoneNumber = async ({ phone }) => {
+  const result = await makeAuthenticatedRequest(
+    `${process.env.NEXT_PUBLIC_BASE_URL}api/auth/store-phone`,
+    {
+      method: "POST",
+      data: { phone },
+    }
+  );
+
+  if (result.success) {
+    return result.data;
+  }
+
+  throw new Error("Failed to store phone number");
+};
+
+export const verifyOTP = async ({ phone, otpCode }) => {
+  const result = await makeAuthenticatedRequest(
+    `${process.env.NEXT_PUBLIC_BASE_URL}api/auth/verify-otp`,
+    {
+      method: "POST",
+      data: { phone, otpCode },
+    }
+  );
+
+  if (result.success) {
+    return result.data;
+  }
+
+  throw new Error("Failed to verify OTP");
+};
+
+export const completeProfile = async ({
+  businessName,
+  website,
+  instagram,
+  creativeDomains,
+  referralCode,
+}) => {
+  const result = await makeAuthenticatedRequest(
+    `${process.env.NEXT_PUBLIC_BASE_URL}api/auth/complete-profile`,
+    {
+      method: "POST",
+      data: { businessName, website, instagram, creativeDomains, referralCode },
+    }
+  );
+
+  if (result.success) {
+    return result.data;
+  }
+
+  throw new Error("Failed to complete profile");
+};
+
+export const forgotPassword = async ({ email }) => {
+  try {
+    const { data } = await axios.post(
+      `${process.env.NEXT_PUBLIC_BASE_URL}api/auth/forgot-password`,
+      { email },
+      {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    return {
+      success: true,
+      data: data.data,
+      message: data.message || "Password reset link sent",
+    };
+  } catch (error) {
+    return {
+      success: false,
+      message: error.response?.data?.message || "Failed to send reset link",
+    };
+  }
+};
+
+export const resetPassword = async ({ token, password }) => {
+  try {
+    const { data } = await axios.post(
+      `${process.env.NEXT_PUBLIC_BASE_URL}api/auth/reset-password`,
+      { token, password },
+      {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    return {
+      success: true,
+      data: data.data,
+      message: data.message || "Password reset successfully",
+    };
+  } catch (error) {
+    return {
+      success: false,
+      message: error.response?.data?.message || "Failed to reset password",
+    };
+  }
+};
+
+// ==========================================
+// EMAIL VERIFICATION
+// ==========================================
+
+export const sendVerificationEmail = async (email, userId) => {
+  try {
+    const { data } = await axios.post(
+      `${process.env.NEXT_PUBLIC_BASE_URL}api/auth/send-verification-email`,
+      { email, userId },
+      {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    return {
+      success: true,
+      data: data.data,
+      message: data.message || "Verification email sent!",
+    };
+  } catch (error) {
+    return {
+      success: false,
+      message:
+        error.response?.data?.message || "Failed to send verification email",
+    };
+  }
+};
+
+export const verifyEmailToken = async (token) => {
+  try {
+    const { data } = await axios.get(
+      `${process.env.NEXT_PUBLIC_BASE_URL}api/auth/verify-email/${token}`
+    );
+
+    return {
+      success: true,
+      data,
+      message: "Email verified successfully!",
+    };
+  } catch (error) {
+    return {
+      success: false,
+      message: "Failed to verify email.",
+    };
+  }
+};
+
+export const checkEmailVerificationStatus = async () => {
+  const result = await makeAuthenticatedRequest(
+    `${process.env.NEXT_PUBLIC_BASE_URL}api/auth/check-email-verification`,
+    {
+      method: "GET",
+    }
+  );
+
+  if (result.success) {
+    return {
+      success: true,
+      data: result.data.data,
+      message: result.data.message,
+    };
+  }
+
+  return {
+    success: false,
+    message: "Failed to check email verification status",
+  };
+};
+
+export const resendVerificationEmail = async ({ email }) => {
+  try {
+    const { data } = await axios.post(
+      `${process.env.NEXT_PUBLIC_BASE_URL}api/auth/resend-verification-email`,
+      { email },
+      {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    return {
+      success: true,
+      data: data.data,
+      message: data.message || "Verification email resent!",
+    };
+  } catch (error) {
+    return {
+      success: false,
+      message:
+        error.response?.data?.message || "Failed to resend verification email",
+    };
+  }
+};
+
+// ==========================================
+// ONBOARDING
+// ==========================================
+
+export const getOnboardingProgress = async () => {
+  const result = await makeAuthenticatedRequest(
+    `${process.env.NEXT_PUBLIC_BASE_URL}api/auth/onboarding/progress`,
+    {
+      method: "GET",
+    }
+  );
+
+  if (result.success) {
+    return result.data;
+  }
+
+  throw new Error("Failed to get onboarding progress");
+};
+
+export const updateOnboardingProgress = async (
+  currentStep,
+  formData,
+  stepCompleted = null
+) => {
+  const result = await makeAuthenticatedRequest(
+    `${process.env.NEXT_PUBLIC_BASE_URL}api/auth/onboarding/update-progress`,
+    {
+      method: "POST",
+      data: { currentStep, formData, stepCompleted },
+    }
+  );
+
+  if (result.success) {
+    return result.data;
+  }
+
+  throw new Error("Failed to update onboarding progress");
+};
+
+export const getNextStep = async () => {
+  const result = await makeAuthenticatedRequest(
+    `${process.env.NEXT_PUBLIC_BASE_URL}api/auth/onboarding/next-step`,
+    {
+      method: "GET",
+    }
+  );
+
+  if (result.success) {
+    return result.data;
+  }
+
+  throw new Error("Failed to get next step");
+};
+
+export const checkUserStatus = async () => {
+  const result = await makeAuthenticatedRequest(
+    `${process.env.NEXT_PUBLIC_BASE_URL}api/auth/check-status`,
+    {
+      method: "GET",
+    }
+  );
+
+  if (result.success) {
+    return result.data;
+  }
+
+  throw new Error("Failed to check user status");
+};
+
+// ==========================================
+// USER DATA
+// ==========================================
+
+export const getRank = async () => {
+  const result = await makeAuthenticatedRequest(
+    `${process.env.NEXT_PUBLIC_BASE_URL}api/users/rank`,
+    {
+      method: "GET",
+    }
+  );
+
+  if (result.success) {
+    return result.data;
+  }
+
+  throw new Error("Failed to get rank");
+};
+
+export const getPoints = async () => {
+  const result = await makeAuthenticatedRequest(
+    `${process.env.NEXT_PUBLIC_BASE_URL}api/users/points`,
+    {
+      method: "GET",
+    }
+  );
+
+  if (result.success) {
+    return result.data;
+  }
+
+  throw new Error("Failed to get points");
+};
+
+export const getReferralCode = async () => {
+  const result = await makeAuthenticatedRequest(
+    `${process.env.NEXT_PUBLIC_BASE_URL}api/users/referral-code`,
+    {
+      method: "GET",
+    }
+  );
+
+  if (result.success) {
+    return result.data;
+  }
+
+  throw new Error("Failed to get referral code");
+};
+
+// ==========================================
+// POSTS & FEED
+// ==========================================
+
+export const getFeed = async (
+  category = "New",
+  page = 1,
+  limit = 10,
+  search = "",
+  sortBy = "newest"
+) => {
+  try {
+    const params = {
+      category: String(category || "New"),
+      page: Number(page) || 1,
+      limit: Number(limit) || 10,
+      search: String(search || ""),
+      sortBy: String(sortBy || "newest"),
+    };
+
+    const result = await makeAuthenticatedRequest(
+      `${process.env.NEXT_PUBLIC_BASE_URL}api/post/feed`,
+      {
+        method: "GET",
+        params,
+      }
+    );
+
+    if (result.success) {
+      return {
+        success: true,
+        posts: result.data.posts || [],
+        pagination: result.data.pagination || { hasMore: false },
+        error: null,
+      };
+    }
+
+    throw new Error("Request failed");
+  } catch (error) {
+    console.error("getFeed Server Action Error:", error);
+
+    let errorMessage = "Failed to fetch feed";
+
+    if (error.response?.status === 401) {
+      errorMessage = "Authentication required";
+    } else if (error.response?.status === 403) {
+      errorMessage = "Access forbidden";
+    } else if (error.code === "ECONNABORTED") {
+      errorMessage = "Request timeout";
+    } else if (error.response?.data?.message) {
+      errorMessage = error.response.data.message;
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
+
+    return {
+      success: false,
+      posts: [],
+      pagination: { hasMore: false },
+      error: errorMessage,
+    };
+  }
+};
+
+export const getCoupleFeed = async (
+  page = 1,
+  limit = 10,
+  search = "",
+  sortBy = "newest"
+) => {
+  try {
+    const params = {
+      page: Number(page) || 1,
+      limit: Number(limit) || 10,
+      search: String(search || ""),
+      sortBy: String(sortBy || "newest"),
+    };
+
+    const cookieStore = await cookies();
+    const token = cookieStore.get("token")?.value;
+
+    const { data } = await axios.get(
+      `${process.env.NEXT_PUBLIC_BASE_URL}api/post/feed/public/couples`,
+      {
+        params,
+        headers: {
+          ...(token && { Authorization: `Bearer ${token}` }),
+          "Content-Type": "application/json",
+        },
+        timeout: 30000,
+        withCredentials: true,
+      }
+    );
+
+    return {
+      success: true,
+      posts: data.posts || [],
+      pagination: data.pagination || { hasMore: false },
+      error: null,
+    };
+  } catch (error) {
+    console.error("getCoupleFeed Server Action Error:", error);
+
+    return {
+      success: false,
+      posts: [],
+      pagination: { hasMore: false },
+      error: error.response?.data?.message || "Failed to fetch couple feed",
+    };
+  }
+};
+
+export const globalSearch = async (
+  query,
+  page = 1,
+  limit = 10,
+  sortBy = "newest",
+  categories = ""
+) => {
+  const result = await makeAuthenticatedRequest(
+    `${process.env.NEXT_PUBLIC_BASE_URL}api/post/global`,
+    {
+      method: "GET",
+      params: { query, page, limit, sortBy, categories },
+    }
+  );
+
+  if (result.success) {
+    return result.data;
+  }
+
+  throw new Error("Failed to perform global search");
+};
+
+export const createPost = async (payload) => {
+  try {
+    const result = await makeAuthenticatedRequest(
+      `${process.env.NEXT_PUBLIC_BASE_URL}api/post/`,
+      {
+        method: "POST",
+        data: payload,
+      }
+    );
+
+    if (result.success) {
+      return { success: true, data: result.data };
+    }
+
+    // If result has an error property, return it
+    if (result.error) {
+      return {
+        success: false,
+        error: {
+          message: result.error,
+          status: result.status,
+          errorCode: result.errorCode || "API_ERROR",
+        },
+      };
+    }
+
+    throw new Error("Failed to create post");
+  } catch (error) {
+    // Check if error response has the rate limit message
+    const errorMessage =
+      error.response?.data?.error ||
+      error.response?.data?.message ||
+      error.message ||
+      "Failed to create post";
+
+    return {
+      success: false,
+      error: {
+        message: errorMessage,
+        status: error.response?.status,
+        errorCode: error.response?.data?.errorCode || "API_ERROR",
+        retryAfter: error.response?.data?.retryAfter, // Include retryAfter if present
+      },
+    };
+  }
+};
+
+export const checkPostingEligibility = async () => {
+  try {
+    const result = await makeAuthenticatedRequest(
+      `${process.env.NEXT_PUBLIC_BASE_URL}api/post/check-posting-eligibility`,
+      {
+        method: "GET",
+      }
+    );
+
+    if (result.success) {
+      return {
+        success: true,
+        data: result.data,
+        error: null,
+      };
+    }
+
+    throw new Error("Failed to check eligibility");
+  } catch (error) {
+    return {
+      success: false,
+      data: null,
+      error: error.response?.data?.message || "Failed to check eligibility",
+    };
+  }
+};
+
+export const likePost = async ({ postId }) => {
+  try {
+    const result = await makeAuthenticatedRequest(
+      `${process.env.NEXT_PUBLIC_BASE_URL}api/post/${postId}/like`,
+      {
+        method: "POST",
+        data: {},
+      }
+    );
+
+    if (result.success) {
+      return {
+        success: true,
+        data: result.data,
+        error: null,
+      };
+    }
+
+    throw new Error("Failed to like post");
+  } catch (error) {
+    return {
+      success: false,
+      data: null,
+      error: error.response?.data?.message || "Failed to like post",
+      canUnlike: error.response?.data?.canUnlike !== false,
+      statusCode: error.response?.status,
+    };
+  }
+};
+
+export const savePost = async ({ postId }) => {
+  const result = await makeAuthenticatedRequest(
+    `${process.env.NEXT_PUBLIC_BASE_URL}api/post/${postId}/save`,
+    {
+      method: "POST",
+      data: {},
+    }
+  );
+
+  if (result.success) {
+    return result.data;
+  }
+
+  throw new Error("Failed to save post");
+};
+
+export const votePoll = async (postId, optionIndex, isEdit = false) => {
+  const result = await makeAuthenticatedRequest(
+    `${process.env.NEXT_PUBLIC_BASE_URL}api/post/${postId}/vote`,
+    {
+      method: "POST",
+      data: { optionIndex, isEdit },
+    }
+  );
+
+  if (result.success) {
+    return result.data;
+  }
+
+  throw new Error("Failed to vote on poll");
+};
+
+export const getPost = async (postId) => {
+  const result = await makeAuthenticatedRequest(
+    `${process.env.NEXT_PUBLIC_BASE_URL}api/post/${postId}`,
+    {
+      method: "GET",
+    }
+  );
+
+  if (result.success) {
+    return result.data;
+  }
+
+  throw new Error("Failed to get post");
+};
+
+export const getPublicPost = async (postId) => {
+  try {
+    const { data } = await axios.get(
+      `${process.env.NEXT_PUBLIC_BASE_URL}api/post/public/${postId}`,
+      {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
+    return data;
+  } catch (error) {
+    throw new Error("Failed to get public post");
+  }
+};
+
+export const deletePost = async (postId) => {
+  const result = await makeAuthenticatedRequest(
+    `${process.env.NEXT_PUBLIC_BASE_URL}api/post/${postId}`,
+    {
+      method: "DELETE",
+    }
+  );
+
+  if (result.success) {
+    return result.data;
+  }
+
+  throw new Error("Failed to delete post");
+};
+
+export const getSavedPosts = async (query = {}) => {
+  const queryString = new URLSearchParams(query).toString();
+
+  const result = await makeAuthenticatedRequest(
+    `${process.env.NEXT_PUBLIC_BASE_URL}api/post/saved${
+      queryString ? `?${queryString}` : ""
+    }`,
+    {
+      method: "GET",
+    }
+  );
+
+  if (result.success) {
+    return result.data;
+  }
+
+  throw new Error("Failed to get saved posts");
+};
+
+// ==========================================
+// COMMENTS
+// ==========================================
+
+export const fetchComments = async (postId, page = 1, limit = 20) => {
+  try {
+    const result = await makeAuthenticatedRequest(
+      `${process.env.NEXT_PUBLIC_BASE_URL}api/post/comment/${postId}`,
+      {
+        method: "GET",
+        params: { page, limit },
+      }
+    );
+
+    if (result.success) {
+      return result.data;
+    }
+
+    throw new Error("Failed to fetch comments");
+  } catch (error) {
+    if (error.response?.status === 401) {
+      throw new Error("Unauthorized. Please log in.");
+    } else {
+      throw new Error(
+        error.response?.data?.message || "Failed to fetch comments."
+      );
+    }
+  }
+};
+
+export const fetchPublicComments = async (postId, page = 1, limit = 20) => {
+  try {
+    const { data } = await axios.get(
+      `${process.env.NEXT_PUBLIC_BASE_URL}api/post/public/comment/${postId}`,
+      {
+        params: { page, limit },
+      }
+    );
+
+    return data;
+  } catch (error) {
+    throw new Error(
+      error.response?.data?.message || "Failed to fetch comments."
+    );
+  }
+};
+
+export const createComment = async (
+  postId,
+  content,
+  parentCommentId = null,
+  mentions = []
+) => {
+  const result = await makeAuthenticatedRequest(
+    `${process.env.NEXT_PUBLIC_BASE_URL}api/post/comment/`,
+    {
+      method: "POST",
+      data: { postId, content, parentCommentId, mentions },
+    }
+  );
+
+  if (result.success) {
+    return result.data;
+  }
+
+  throw new Error("Failed to create comment");
+};
+
+export const updateComment = async (commentId, content) => {
+  const result = await makeAuthenticatedRequest(
+    `${process.env.NEXT_PUBLIC_BASE_URL}api/post/comments/${commentId}`,
+    {
+      method: "PUT",
+      data: { content },
+    }
+  );
+
+  if (result.success) {
+    return result.data;
+  }
+
+  throw new Error("Failed to update comment");
+};
+
+export const deleteComment = async (commentId) => {
+  const result = await makeAuthenticatedRequest(
+    `${process.env.NEXT_PUBLIC_BASE_URL}api/post/comments/${commentId}`,
+    {
+      method: "DELETE",
+    }
+  );
+
+  if (result.success) {
+    return result.data;
+  }
+
+  throw new Error("Failed to delete comment");
+};
+
+export const likeComment = async (commentId) => {
+  const result = await makeAuthenticatedRequest(
+    `${process.env.NEXT_PUBLIC_BASE_URL}api/post/comment/${commentId}/like`,
+    {
+      method: "POST",
+      data: {},
+    }
+  );
+
+  if (result.success) {
+    return result.data;
+  }
+
+  throw new Error("Failed to like comment");
+};
+
+export const searchUsersForMentions = async (query, postId) => {
+  const result = await makeAuthenticatedRequest(
+    `${process.env.NEXT_PUBLIC_BASE_URL}api/post/comment/search-users`,
+    {
+      method: "GET",
+      params: { query, postId },
+    }
+  );
+
+  if (result.success) {
+    return result.data;
+  }
+
+  throw new Error("Failed to search users");
+};
+
+export const getUsernameForChatroom = async (postId) => {
+  const result = await makeAuthenticatedRequest(
+    `${process.env.NEXT_PUBLIC_BASE_URL}api/post/comment/get-username`,
+    {
+      method: "GET",
+      params: { postId },
+    }
+  );
+
+  if (result.success) {
+    return result.data;
+  }
+
+  throw new Error("Failed to get username");
+};
+
+export const openChatroom = async ({ postId }) => {
+  const result = await makeAuthenticatedRequest(
+    `${process.env.NEXT_PUBLIC_BASE_URL}api/post/enter-chatroom`,
+    {
+      method: "POST",
+      data: { postId },
+    }
+  );
+
+  if (result.success) {
+    return result.data;
+  }
+
+  throw new Error("Failed to open chatroom");
+};
+
+export const getPostCommentCount = async ({ postId }) => {
+  const result = await makeAuthenticatedRequest(
+    `${process.env.NEXT_PUBLIC_BASE_URL}api/post/comment-count/${postId}`,
+    {
+      method: "GET",
+    }
+  );
+
+  if (result.success) {
+    return result.data;
+  }
+
+  throw new Error("Failed to get comment count");
+};
+
+// ==========================================
+// ANONYMOUS MODE
+// ==========================================
+
+export const activateAnonymousMode = async () => {
+  try {
+    const result = await makeAuthenticatedRequest(
+      `${process.env.NEXT_PUBLIC_BASE_URL}api/anon/activate`,
+      {
+        method: "POST",
+        data: {},
+      }
+    );
+
+    if (result.success) {
+      return { success: true, data: result.data };
+    }
+
+    throw new Error("Failed to activate anonymous mode");
+  } catch (error) {
+    return {
+      success: false,
+      error: {
+        message:
+          error.response?.data?.error || "Failed to activate anonymous mode",
+        status: error.response?.status,
+        errorCode:
+          error.response?.data?.error === "User is already in anonymous mode"
+            ? "ALREADY_ANONYMOUS"
+            : "API_ERROR",
+      },
+    };
+  }
+};
+
+export const deactivateAnonymousMode = async () => {
+  try {
+    const result = await makeAuthenticatedRequest(
+      `${process.env.NEXT_PUBLIC_BASE_URL}api/anon/deactivate`,
+      {
+        method: "POST",
+        data: {},
+      }
+    );
+
+    if (result.success) {
+      return { success: true, data: result.data };
+    }
+
+    throw new Error("Failed to deactivate anonymous mode");
+  } catch (error) {
+    return {
+      success: false,
+      error: {
+        message:
+          error.response?.data?.error || "Failed to deactivate anonymous mode",
+        status: error.response?.status,
+        errorCode: error.response?.data?.errorCode || "API_ERROR",
+      },
+    };
+  }
+};
+
+export const getAnonymousStatus = async () => {
+  try {
+    const result = await makeAuthenticatedRequest(
+      `${process.env.NEXT_PUBLIC_BASE_URL}api/anon/status`,
+      {
+        method: "GET",
+      }
+    );
+
+    if (result.success) {
+      return { success: true, data: result.data };
+    }
+
+    throw new Error("Failed to get anonymous status");
+  } catch (error) {
+    return {
+      success: false,
+      error: {
+        message:
+          error.response?.data?.error || "Failed to get anonymous status",
+        status: error.response?.status,
+        errorCode: error.response?.data?.errorCode || "API_ERROR",
+      },
+    };
+  }
+};
+
+// ==========================================
+// CREATIVE INQUIRIES
+// ==========================================
+
+export const createCreativeInquiry = async (payload) => {
+  try {
+    const result = await makeAuthenticatedRequest(
+      `${process.env.NEXT_PUBLIC_BASE_URL}api/creative-inquiries/create`,
+      {
+        method: "POST",
+        data: payload,
+      }
+    );
+
+    if (result.success) {
+      return { success: true, data: result.data };
+    }
+
+    throw new Error("Failed to create creative inquiry");
+  } catch (error) {
+    return {
+      success: false,
+      error: {
+        message:
+          error.response?.data?.error ||
+          error.response?.data?.message ||
+          "Failed to create creative inquiry",
+        status: error.response?.status,
+        errorCode: error.response?.data?.errorCode || "API_ERROR",
+      },
+    };
+  }
+};
+
+export const createPaymentSession = async (payload) => {
+  try {
+    const result = await makeAuthenticatedRequest(
+      `${process.env.NEXT_PUBLIC_BASE_URL}api/creative-inquiries/payment`,
+      {
+        method: "POST",
+        data: payload,
+      }
+    );
+
+    if (result.success) {
+      return { success: true, data: result.data };
+    }
+
+    throw new Error("Failed to create payment session");
+  } catch (error) {
+    return {
+      success: false,
+      error: {
+        message:
+          error.response?.data?.error ||
+          error.response?.data?.message ||
+          "Failed to create payment session",
+        status: error.response?.status,
+        errorCode: error.response?.data?.errorCode || "API_ERROR",
+      },
+    };
+  }
+};
+
+export const handlePaymentSuccess = async (sessionId, inquiryId) => {
+  try {
+    const result = await makeAuthenticatedRequest(
+      `${process.env.NEXT_PUBLIC_BASE_URL}api/creative-inquiries/payment/success?session_id=${sessionId}&inquiry_id=${inquiryId}`,
+      {
+        method: "GET",
+      }
+    );
+
+    if (result.success) {
+      return { success: true, data: result.data };
+    }
+
+    throw new Error("Failed to verify payment");
+  } catch (error) {
+    return {
+      success: false,
+      error: {
+        message:
+          error.response?.data?.error ||
+          error.response?.data?.message ||
+          "Failed to verify payment",
+        status: error.response?.status,
+        errorCode: error.response?.data?.errorCode || "API_ERROR",
+      },
+    };
+  }
+};
+
+export const handlePaymentCancel = async (inquiryId) => {
+  try {
+    const result = await makeAuthenticatedRequest(
+      `${process.env.NEXT_PUBLIC_BASE_URL}api/creative-inquiries/payment/cancel?inquiry_id=${inquiryId}`,
+      {
+        method: "GET",
+      }
+    );
+
+    if (result.success) {
+      return { success: true, data: result.data };
+    }
+
+    throw new Error("Failed to cancel payment");
+  } catch (error) {
+    return {
+      success: false,
+      error: {
+        message:
+          error.response?.data?.error ||
+          error.response?.data?.message ||
+          "Failed to cancel payment",
+        status: error.response?.status,
+        errorCode: error.response?.data?.errorCode || "API_ERROR",
+      },
+    };
+  }
+};
+
+export const checkUserCompletedInquiries = async () => {
+  try {
+    const result = await makeAuthenticatedRequest(
+      `${process.env.NEXT_PUBLIC_BASE_URL}api/creative-inquiries/check-completed`,
+      {
+        method: "GET",
+      }
+    );
+
+    if (result.success) {
+      return { success: true, data: result.data };
+    }
+
+    throw new Error("Failed to check inquiries");
+  } catch (error) {
+    return {
+      success: false,
+      error: {
+        message:
+          error.response?.data?.error ||
+          error.response?.data?.message ||
+          "Failed to fetch inquiries",
+        status: error.response?.status,
+        errorCode: error.response?.data?.errorCode || "API_ERROR",
+      },
+    };
+  }
+};
+
+export const getUserInquiries = async (options = {}) => {
+  try {
+    const { status, limit = 20, offset = 0 } = options;
+    let queryParams = `?limit=${limit}&offset=${offset}`;
+
+    if (status) {
+      queryParams += `&status=${status}`;
+    }
+
+    const result = await makeAuthenticatedRequest(
+      `${process.env.NEXT_PUBLIC_BASE_URL}api/creative-inquiries/user-inquiries${queryParams}`,
+      {
+        method: "GET",
+      }
+    );
+
+    if (result.success) {
+      return { success: true, data: result.data };
+    }
+
+    throw new Error("Failed to fetch user inquiries");
+  } catch (error) {
+    return {
+      success: false,
+      error: {
+        message:
+          error.response?.data?.error ||
+          error.response?.data?.message ||
+          "Failed to fetch inquiries",
+        status: error.response?.status,
+        errorCode: error.response?.data?.errorCode || "API_ERROR",
+      },
+    };
+  }
+};
+
+export const getInquiryDetails = async (inquiryId) => {
+  try {
+    const result = await makeAuthenticatedRequest(
+      `${process.env.NEXT_PUBLIC_BASE_URL}api/creative-inquiries/${inquiryId}`,
+      {
+        method: "GET",
+      }
+    );
+
+    if (result.success) {
+      return { success: true, data: result.data };
+    }
+
+    throw new Error("Failed to fetch inquiry details");
+  } catch (error) {
+    return {
+      success: false,
+      error: {
+        message:
+          error.response?.data?.error ||
+          error.response?.data?.message ||
+          "Failed to fetch inquiry details",
+        status: error.response?.status,
+        errorCode: error.response?.data?.errorCode || "API_ERROR",
+      },
+    };
+  }
+};
+
+export const storeChatData = async (payload) => {
+  try {
+    const result = await makeAuthenticatedRequest(
+      `${process.env.NEXT_PUBLIC_BASE_URL}api/creative-inquiries/store-chat`,
+      {
+        method: "POST",
+        data: payload,
+      }
+    );
+
+    if (result.success) {
+      return { success: true, data: result.data };
+    }
+
+    throw new Error("Failed to store chat data");
+  } catch (error) {
+    return {
+      success: false,
+      error: {
+        message:
+          error.response?.data?.error ||
+          error.response?.data?.message ||
+          "Failed to store chat data",
+        status: error.response?.status,
+        errorCode: error.response?.data?.errorCode || "API_ERROR",
+      },
+    };
+  }
+};
+
+// ==========================================
+// NOTIFICATIONS
+// ==========================================
+
+export const getNotifications = async (limit = 20, offset = 0) => {
+  const result = await makeAuthenticatedRequest(
+    `${process.env.NEXT_PUBLIC_BASE_URL}api/notifications?limit=${limit}&offset=${offset}`,
+    {
+      method: "GET",
+    }
+  );
+
+  if (result.success) {
+    return result.data;
+  }
+
+  throw new Error("Failed to get notifications");
+};
+
+export const getUnreadCount = async () => {
+  const result = await makeAuthenticatedRequest(
+    `${process.env.NEXT_PUBLIC_BASE_URL}api/notifications/unread-count`,
+    {
+      method: "GET",
+    }
+  );
+
+  if (result.success) {
+    return result.data;
+  }
+
+  throw new Error("Failed to get unread count");
+};
+
+export const markNotificationAsRead = async (notificationId) => {
+  const result = await makeAuthenticatedRequest(
+    `${process.env.NEXT_PUBLIC_BASE_URL}api/notifications/${notificationId}/read`,
+    {
+      method: "PATCH",
+      data: {},
+    }
+  );
+
+  if (result.success) {
+    return result.data;
+  }
+
+  throw new Error("Failed to mark notification as read");
+};
+
+export const markAllNotificationsAsRead = async () => {
+  const result = await makeAuthenticatedRequest(
+    `${process.env.NEXT_PUBLIC_BASE_URL}api/notifications/read-all`,
+    {
+      method: "PATCH",
+      data: {},
+    }
+  );
+
+  if (result.success) {
+    return result.data;
+  }
+
+  throw new Error("Failed to mark all notifications as read");
+};
+
+export const deleteNotification = async (notificationId) => {
+  const result = await makeAuthenticatedRequest(
+    `${process.env.NEXT_PUBLIC_BASE_URL}api/notifications/${notificationId}`,
+    {
+      method: "DELETE",
+    }
+  );
+
+  if (result.success) {
+    return result.data;
+  }
+
+  throw new Error("Failed to delete notification");
+};
+
+// ==========================================
+// INSTAGRAM INTEGRATION
+// ==========================================
+
+export const exchangeInstagramToken = async ({
+  code,
+  redirect_uri,
+  accessToken,
+}) => {
+  try {
+    const headers = {
+      "Content-Type": "application/json",
+    };
+
+    if (accessToken) {
+      headers.Authorization = `Bearer ${accessToken}`;
+    }
+
+    const res = await axios.post(
+      `${process.env.NEXT_PUBLIC_BASE_URL}api/auth/instagram/exchange-token`,
+      {
+        code,
+        redirect_uri,
+      },
+      {
+        headers,
+        withCredentials: true,
+      }
+    );
+
+    return res.data;
+  } catch (error) {
+    throw new Error(
+      error.response?.data?.message || "Instagram token exchange failed"
+    );
+  }
+};
+
+// ==========================================
+// LEGACY/DEPRECATED - Keep for backward compatibility
+// ==========================================
+
+export const handleGoogleToken = async (accessToken) => {
+  try {
+    const cookieStore = await cookies();
+    cookieStore.set("token", accessToken);
+    return true;
+  } catch (error) {
+    return false;
+  }
+};
+
+export const refreshUserToken = async () => {
+  console.warn(
+    "refreshUserToken is deprecated. Token refresh is now handled automatically."
+  );
+  return {
+    success: true,
+    message:
+      "This function is deprecated. Use automatic token refresh instead.",
+  };
+};
+
+export const refreshAccessToken = async () => {
+  console.warn(
+    "refreshAccessToken is deprecated. Token refresh is now handled automatically."
+  );
+  return refreshTokenServer();
+};

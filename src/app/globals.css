@@ -1,0 +1,78 @@
+@import "tailwindcss";
+
+/* Define custom breakpoint */
+@custom-media --xs (min-width: 275px);
+
+/* You can also define other custom breakpoints if needed */
+@custom-media --2xl (min-width: 1536px);
+
+.scrollbar-hide {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE 10+ */
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+}
+
+.quote-logo-crisp {
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+  -webkit-image-rendering: crisp-edges;
+  -ms-image-rendering: crisp-edges;
+  -webkit-tap-highlight-color: transparent;
+  /* iOS Safari specific fixes */
+  -webkit-transform: translate3d(0, 0, 0);
+  transform: translate3d(0, 0, 0);
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  /* Force pixel-perfect rendering */
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+}
+
+@keyframes slide-up {
+  from {
+    transform: translateY(4%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-up {
+  animation: slide-up 0.3s ease-out;
+}
+
+:root {
+  --vh: 1vh;
+}
+
+.supports-vh {
+  height: calc(var(--vh, 1vh) * 100);
+}
+
+/* Enhanced iOS fixes */
+html,
+body {
+  overflow-x: hidden; /* Only hide horizontal scroll */
+  width: 100%;
+  height: 100%;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Prevent zoom on iOS */
+input,
+textarea,
+select {
+  font-size: 16px !important;
+  transform-origin: left top;
+}
+
+/* Smooth input transitions */
+.input-transition {
+  transition: transform 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+    opacity 0.3s ease;
+}
