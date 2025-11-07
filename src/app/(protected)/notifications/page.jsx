@@ -242,8 +242,7 @@ const NotificationsPage = () => {
       style={{ fontFamily: "Nunito Sans, sans-serif" }}
     >
       <div className="max-w-2xl mx-auto px-6 pb-4">
-        <div className="flex items-center justify-between mb-6 fixed top-7 left-16 right-6">
-          <h1 className="text-2xl font-bold">Notifications</h1>
+        <div className="flex items-center justify-between mb-6">
           {/* {unreadCount > 0 && (
             <button
               onClick={handleMarkAllAsRead}

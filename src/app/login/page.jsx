@@ -1601,11 +1601,10 @@ const page = () => {
           type="button"
           onClick={onBack}
           disabled={isLoading}
-          className={`transition-colors p-2 ${
-            isLoading
+          className={`transition-colors p-2 ${isLoading
               ? "text-gray-400 cursor-not-allowed"
               : "text-black hover:text-gray-800 cursor-pointer"
-          }`}
+            }`}
         >
           <ChevronLeft size={24} />
         </button>
@@ -1617,11 +1616,10 @@ const page = () => {
         type="submit"
         onClick={onNext}
         disabled={!canContinue || isLoading}
-        className={`transition-colors p-2 relative group ${
-          canContinue && !isLoading
+        className={`transition-colors p-2 relative group ${canContinue && !isLoading
             ? "text-black hover:text-gray-800 cursor-pointer"
             : "text-gray-400 cursor-not-allowed"
-        }`}
+          }`}
         title={
           !canContinue && !isLoading
             ? "Please use a valid business email address"
@@ -1856,17 +1854,15 @@ const page = () => {
                         handleInputChange("email", e.target.value)
                       }
                       disabled={isLoading}
-                      className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-black focus:border-transparent ${
-                        isLoading ? "bg-gray-100 cursor-not-allowed" : ""
-                      } ${
-                        emailValidation.type === "error"
+                      className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-black focus:border-transparent ${isLoading ? "bg-gray-100 cursor-not-allowed" : ""
+                        } ${emailValidation.type === "error"
                           ? "border-red-300"
                           : emailValidation.type === "warning"
-                          ? "border-yellow-300"
-                          : emailValidation.type === "success"
-                          ? "border-green-300"
-                          : "border-gray-300"
-                      }`}
+                            ? "border-yellow-300"
+                            : emailValidation.type === "success"
+                              ? "border-green-300"
+                              : "border-gray-300"
+                        }`}
                       placeholder="your@business.com"
                       required
                     />
@@ -1895,9 +1891,8 @@ const page = () => {
                         handleInputChange("password", e.target.value)
                       }
                       disabled={isLoading}
-                      className={`w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent ${
-                        isLoading ? "bg-gray-100 cursor-not-allowed" : ""
-                      }`}
+                      className={`w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent ${isLoading ? "bg-gray-100 cursor-not-allowed" : ""
+                        }`}
                       placeholder="Enter your password"
                       required
                     />
@@ -1942,15 +1937,13 @@ const page = () => {
                             handleInputChange("confirmPassword", e.target.value)
                           }
                           disabled={isLoading}
-                          className={`w-full px-4 py-3 pr-12 border rounded-lg focus:ring-2 focus:ring-black focus:border-transparent ${
-                            isLoading ? "bg-gray-100 cursor-not-allowed" : ""
-                          } ${
-                            confirmPasswordValidation.type === "error"
+                          className={`w-full px-4 py-3 pr-12 border rounded-lg focus:ring-2 focus:ring-black focus:border-transparent ${isLoading ? "bg-gray-100 cursor-not-allowed" : ""
+                            } ${confirmPasswordValidation.type === "error"
                               ? "border-red-300"
                               : confirmPasswordValidation.type === "success"
-                              ? "border-green-300"
-                              : "border-gray-300"
-                          }`}
+                                ? "border-green-300"
+                                : "border-gray-300"
+                            }`}
                           placeholder="Confirm your password"
                           required
                         />
@@ -2150,11 +2143,10 @@ const page = () => {
                       <button
                         onClick={handleResendVerificationEmail}
                         disabled={resendCooldown > 0 || isLoading}
-                        className={`w-full py-3 px-6 rounded-full font-semibold transition-colors ${
-                          resendCooldown > 0 || isLoading
+                        className={`w-full py-3 px-6 rounded-full font-semibold transition-colors ${resendCooldown > 0 || isLoading
                             ? "bg-gray-200 text-gray-400 cursor-not-allowed"
                             : "bg-black text-white hover:bg-gray-800"
-                        }`}
+                          }`}
                       >
                         {isLoading ? (
                           <div className="flex items-center justify-center gap-2">
@@ -2227,26 +2219,12 @@ const page = () => {
                 onBack={goToPrevStep}
                 canContinue={formData.phone.length > 8}
               />
-              <div className="text-center mx-4">
-                <p className="text-[8px] [@media(min-width:360px)]:text-[10px] text-gray-600">
-                  This is required to access main features, See{" "}
-                  <span
-                    className="italic underline"
-                    onClick={() => openHelpCenter("terms")}
-                  >
-                    {" "}
-                    Terms
-                  </span>{" "}
-                  and{" "}
-                  <span
-                    className="italic underline"
-                    onClick={() => openHelpCenter("privacy")}
-                  >
-                    Policy{" "}
-                  </span>{" "}
-                  for details.
-                </p>
-              </div>
+              <p className="text-[10px] [@media(min-width:360px)]:text-[10px] text-gray-600 whitespace-nowrap">
+                This is required to access main features, See{" "}
+                <span className="italic underline" onClick={() => openHelpCenter("terms")}>Terms</span> and{" "}
+                <span className="italic underline" onClick={() => openHelpCenter("privacy")}>Policy</span> for details.
+              </p>
+
             </form>
           </div>
         );
@@ -2267,9 +2245,8 @@ const page = () => {
                     handleInputChange("referralCode", e.target.value)
                   }
                   disabled={isLoading}
-                  className={`w-full px-4 py-3 border text-gray-800 border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent text-center text-lg tracking-widest ${
-                    isLoading ? "bg-gray-100 cursor-not-allowed" : ""
-                  }`}
+                  className={`w-full px-4 py-3 border text-gray-800 border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent text-center text-lg tracking-widest ${isLoading ? "bg-gray-100 cursor-not-allowed" : ""
+                    }`}
                   placeholder="0000"
                   required
                 />
@@ -2283,11 +2260,10 @@ const page = () => {
               <button
                 type="submit"
                 disabled={isLoading}
-                className={`w-full border-2 py-4 px-6 rounded-full font-semibold transition-colors flex items-center justify-center gap-3 ${
-                  isLoading
+                className={`w-full border-2 py-4 px-6 rounded-full font-semibold transition-colors flex items-center justify-center gap-3 ${isLoading
                     ? "border-gray-200 text-gray-400 cursor-not-allowed bg-gray-100"
                     : "border-gray-300 text-gray-700 hover:border-gray-400"
-                }`}
+                  }`}
               >
                 {isLoading ? (
                   <>
@@ -2363,14 +2339,13 @@ const page = () => {
                     onChange={(e) =>
                       handleInputChange("website", e.target.value)
                     }
-                    className={`w-full pl-12 pr-4 py-3 text-gray-800 border rounded-lg focus:ring-2 focus:ring-black focus:border-transparent ${
-                      websiteValidation.type === "error" && showWebsiteError
+                    className={`w-full pl-12 pr-4 py-3 text-gray-800 border rounded-lg focus:ring-2 focus:ring-black focus:border-transparent ${websiteValidation.type === "error" && showWebsiteError
                         ? "border-red-300"
                         : websiteValidation.type === "success" &&
                           showWebsiteError
-                        ? "border-green-300"
-                        : "border-gray-300"
-                    }`}
+                          ? "border-green-300"
+                          : "border-gray-300"
+                      }`}
                     placeholder="https://yourbusiness.com"
                     required
                   />
@@ -2403,7 +2378,7 @@ const page = () => {
               <h1 className="text-3xl font-bold text-gray-900">
                 Business Instagram
               </h1>
-           
+
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-6">
@@ -2473,13 +2448,12 @@ const page = () => {
                     key={domain.id}
                     onClick={() => handleDomainSelection(domain.id)}
                     disabled={isDisabled}
-                    className={`w-full p-4 rounded-full border-2 transition-colors flex flex-col items-center gap-2 ${
-                      isSelected
+                    className={`w-full p-4 rounded-full border-2 transition-colors flex flex-col items-center gap-2 ${isSelected
                         ? "border-black bg-black text-white"
                         : isDisabled
-                        ? "border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed"
-                        : "border-gray-300 hover:border-gray-400 text-gray-700"
-                    }`}
+                          ? "border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed"
+                          : "border-gray-300 hover:border-gray-400 text-gray-700"
+                      }`}
                   >
                     <span className="font-medium text-sm">{domain.name}</span>
                   </button>
@@ -2523,11 +2497,10 @@ const page = () => {
                         handleInputChange("resetEmail", e.target.value)
                       }
                       disabled={isLoading}
-                      className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-black focus:border-transparent ${
-                        isLoading
+                      className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-black focus:border-transparent ${isLoading
                           ? "bg-gray-100 cursor-not-allowed"
                           : "border-gray-300"
-                      }`}
+                        }`}
                       placeholder="your@business.com"
                       required
                     />
@@ -2542,11 +2515,10 @@ const page = () => {
                   <button
                     type="submit"
                     disabled={isLoading || !formData.resetEmail}
-                    className={`w-full py-4 px-6 rounded-full font-semibold transition-colors ${
-                      isLoading || !formData.resetEmail
+                    className={`w-full py-4 px-6 rounded-full font-semibold transition-colors ${isLoading || !formData.resetEmail
                         ? "bg-gray-200 text-gray-400 cursor-not-allowed"
                         : "bg-black text-white hover:bg-gray-800"
-                    }`}
+                      }`}
                   >
                     {isLoading ? (
                       <div className="flex items-center justify-center gap-2">

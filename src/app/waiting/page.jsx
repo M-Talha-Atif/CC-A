@@ -180,7 +180,7 @@ const Page = () => {
 
         <div className="text-center mx-[0px] mb-3">
           <p className="mt-3 text-[10px] [@media(min-width:360px)]:text-[10px] text-gray-600">
-            By continuing, you acknowledge that you understand and agree to the{" "}
+            You acknowledge that you understand and agree to the{" "}
             <span
               onClick={() => openHelpCenter("terms")}
               className="italic underline"
