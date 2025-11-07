@@ -725,7 +725,7 @@ const Post = ({
                     </span>
                   </button>
 
-                  <span className="w-[50px] -ml-7 mr-8 text-xs text-left text-gray-500 font-medium">
+                  <span className="w-[50px] -ml-7 mr-20 text-xs text-left text-gray-500 font-medium">
                     {hasVoted && option.percentage !== null
                       ? `${option.percentage}%`
                       : ""}

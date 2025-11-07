@@ -1386,7 +1386,7 @@ const ChatroomClient = () => {
                   return (
                     <div
                       key={index}
-                      className={`w-full flex items-center justify-center gap-6 mb-2 ${
+                      className={`w-full flex items-center justify-center gap-1 mb-2 ${
                         (hasVoted && !canEdit) || isCoupleUser()
                           ? "cursor-not-allowed"
                           : "cursor-pointer"
@@ -1411,7 +1411,7 @@ const ChatroomClient = () => {
                         style={{ WebkitTapHighlightColor: "transparent" }}
                       >
                         <span
-                          className={`text-sm text-gray-700 py-1 px-3  w-[200px] text-center rounded-full ease-in-out transition-all ${
+                          className={`text-sm text-gray-700 py-1 px-3 w-[200px] text-center rounded-full ease-in-out transition-all ${
                             hasVoted
                               ? isUserChoice
                                 ? canEdit
@@ -1436,7 +1436,7 @@ const ChatroomClient = () => {
                         </span>
                       </button>
 
-                      <span className="w-[50px] mr-18 text-xs text-left text-gray-500 font-medium ">
+                      <span className="w-[50px] mr-8 text-xs text-left text-gray-500 font-medium ">
                         {hasVoted && option.percentage !== null
                           ? `${option.percentage}%`
                           : ""}
