@@ -67,7 +67,6 @@ import FloristIcon from "../../../../components/icons/FilterIcons/FloristIcon";
 import PlannerIcon from "../../../../components/icons/FilterIcons/PlannerIcon";
 import SeeAllIcon from "../../../../components/icons/FilterIcons/SeeAllIcon";
 import Portal from "../../../../components/Portal";
-import { useRouteAwareScroll } from '@/hooks/useRouteAwareScroll';
 
 const FeedPage = ({ params = {}, singlePostMode = false, postId = null }) => {
   const router = useRouter();
@@ -244,25 +243,6 @@ const FeedPage = ({ params = {}, singlePostMode = false, postId = null }) => {
   const [singlePostError, setSinglePostError] = useState(null);
 
   const POSTS_PER_PAGE = 10;
-
-  // Add this to your FeedPage component
-  // useEffect(() => {
-  //   // Reset scroll position when category changes or component mounts
-  //   window.scrollTo(0, 0);
-  // }, [selectedCategory]);
-
-  // useEffect(() => {
-  //   // Force a re-layout after initial load
-  //   const timer = setTimeout(() => {
-  //     document.body.style.overflow = 'auto';
-  //   }, 100);
-
-  //   return () => clearTimeout(timer);
-  // }, []);
-
-  // Add this hook
-  useRouteAwareScroll();
-
   useEffect(() => {
     let rafId;
 
@@ -1581,7 +1561,7 @@ const FeedPage = ({ params = {}, singlePostMode = false, postId = null }) => {
 
       {/* Feed Content */}
       <div
-        className={`max-w-[400px] md:max-w-2xl mx-auto px-4 pb-0 ${selectedCategory === "new" ? "pt-[140px]" : "pt-[90px]" // Increased padding to account for headers
+        className={`max-w-[400px] md:max-w-2xl mx-auto px-4 pb-0 ${selectedCategory === "New" ? "pt-[140px]" : "pt-[90px]" // Increased padding to account for headers
           }`}
       >
         {singlePostMode ? (

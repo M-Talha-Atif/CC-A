@@ -160,16 +160,33 @@ const CreatePage = () => {
   //   }
   // }, []);
 
+  useEffect(() => {
+    const textarea = textareaSubjectRef.current;
+    if (!textarea) return;
+
+    const adjustHeight = () => {
+      textarea.style.height = 'auto';
+      const newHeight = Math.min(textarea.scrollHeight, 120);
+      textarea.style.height = newHeight + 'px';
+      textarea.style.overflowY = newHeight >= 120 ? 'auto' : 'hidden';
+    };
+
+    adjustHeight();
+  }, [subject]);
+
   // iOS-safe subject change handler
   const handleSubjectChange = useCallback((e) => {
     const text = e.target.value;
 
+    // Check length first (before any other operations)
     if (text.length > 150) {
-      toast.error("Subject cannot exceed 150 characters.");
+      e.preventDefault();
       return;
     }
 
+    // Check for URLs
     if (containsUrl(text)) {
+      e.preventDefault();
       toast.error(
         "Links are not allowed in the subject. Only text and emoji are permitted."
       );
@@ -178,7 +195,6 @@ const CreatePage = () => {
 
     setSubject(text);
   }, []);
-
   // iOS-safe content change handler
   const handleContentChange = useCallback((e) => {
     const text = e.target.value;
@@ -849,7 +865,7 @@ const CreatePage = () => {
                   </div>
                 )}
               </div>
-              {/* Subject */}
+
               {/* Subject */}
               <div className="mb-1 flex items-center md:gap-3">
                 <label className="block text-sm font-medium text-gray-700 mt-[2px]">
@@ -871,31 +887,21 @@ const CreatePage = () => {
                       WebkitUserSelect: "text",
                       WebkitTouchCallout: "none",
                       WebkitOverflowScrolling: "touch",
-                      touchAction: "pan-y",
+                      touchAction: "manipulation", // Changed from pan-y
                       overflowY: "auto",
                       wordWrap: "break-word",
                       whiteSpace: "pre-wrap",
-                      WebkitTransform: "translateZ(0)", // Hardware acceleration
-                      transform: "translateZ(0)",
                     }}
                     rows={1}
                     autoComplete="off"
-                    autoCorrect="off"
-                    spellCheck="false"
+                    autoCorrect="on" // Changed to "on" for better iOS experience
+                    spellCheck="true" // Changed to "true"
                     autoCapitalize="sentences"
-                    onInput={(e) => {
-                      // iOS immediate height adjustment
-                      const target = e.target;
-                      target.style.height = 'auto';
-                      const newHeight = Math.min(target.scrollHeight, 120);
-                      target.style.height = newHeight + 'px';
-                      target.style.overflowY = newHeight >= 120 ? 'auto' : 'hidden';
-                    }}
                   />
                 </div>
               </div>
               <div className="mb-4 w-full h-px bg-gray-300 mx-auto"></div>
-              {/* Content */}
+
               {/* Content */}
               <div className="">
                 <textarea
