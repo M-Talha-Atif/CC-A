@@ -67,6 +67,7 @@ import FloristIcon from "../../../../components/icons/FilterIcons/FloristIcon";
 import PlannerIcon from "../../../../components/icons/FilterIcons/PlannerIcon";
 import SeeAllIcon from "../../../../components/icons/FilterIcons/SeeAllIcon";
 import Portal from "../../../../components/Portal";
+import { useRouteAwareScroll } from '@/hooks/useRouteAwareScroll';
 
 const FeedPage = ({ params = {}, singlePostMode = false, postId = null }) => {
   const router = useRouter();
@@ -142,6 +143,8 @@ const FeedPage = ({ params = {}, singlePostMode = false, postId = null }) => {
     Planner: PlannerIcon,
     all: SeeAllIcon,
   };
+
+
 
   // 3. Update getCategoriesForUser array
   const getCategoriesForUser = useMemo(() => {
@@ -241,6 +244,24 @@ const FeedPage = ({ params = {}, singlePostMode = false, postId = null }) => {
   const [singlePostError, setSinglePostError] = useState(null);
 
   const POSTS_PER_PAGE = 10;
+
+  // Add this to your FeedPage component
+  // useEffect(() => {
+  //   // Reset scroll position when category changes or component mounts
+  //   window.scrollTo(0, 0);
+  // }, [selectedCategory]);
+
+  // useEffect(() => {
+  //   // Force a re-layout after initial load
+  //   const timer = setTimeout(() => {
+  //     document.body.style.overflow = 'auto';
+  //   }, 100);
+
+  //   return () => clearTimeout(timer);
+  // }, []);
+
+  // Add this hook
+  useRouteAwareScroll();
 
   useEffect(() => {
     let rafId;
@@ -360,12 +381,12 @@ const FeedPage = ({ params = {}, singlePostMode = false, postId = null }) => {
           // Use global search endpoint
           const categoryFilter =
             category !== "Couples" &&
-            category !== "Bookmark" &&
-            creativesSubFilter !== "all"
+              category !== "Bookmark" &&
+              creativesSubFilter !== "all"
               ? creativesSubFilter
               : category === "Creatives"
-              ? "Photographer,Videographer,Florist,Planner"
-              : "";
+                ? "Photographer,Videographer,Florist,Planner"
+                : "";
 
           data = await globalSearch(
             searchTerm.trim(),
@@ -592,6 +613,8 @@ const FeedPage = ({ params = {}, singlePostMode = false, postId = null }) => {
     creativesSubFilter,
   ]);
 
+
+
   useEffect(() => {
     if (searchTimeoutRef.current) {
       clearTimeout(searchTimeoutRef.current);
@@ -661,6 +684,8 @@ const FeedPage = ({ params = {}, singlePostMode = false, postId = null }) => {
     isGlobalSearching,
   ]); // Add isGlobalSearching to dependencies
 
+
+  // prevent scrolling when drop down is opened
   useEffect(() => {
     if (isDropdownOpen || isFilterOpen) {
       document.body.style.overflow = "hidden";
@@ -672,6 +697,13 @@ const FeedPage = ({ params = {}, singlePostMode = false, postId = null }) => {
       document.body.style.overflow = "unset";
     };
   }, [isDropdownOpen, isFilterOpen]);
+
+  // Add this to your FeedPage.js - runs once on mount
+  useEffect(() => {
+    // Ensure body is scrollable on initial load
+    document.body.style.overflow = "unset";
+    document.documentElement.style.overflow = "unset";
+  }, []); // ← Empty dependency array = runs once on mount
 
   // Update posts when filtered results change
   useEffect(() => {
@@ -903,25 +935,25 @@ const FeedPage = ({ params = {}, singlePostMode = false, postId = null }) => {
         prevPosts.map((post) =>
           post.id === postId
             ? {
-                ...post,
-                likes: newLikeCount,
-                isLiked: !isCurrentlyLiked,
-                thresholdMet: willMeetThreshold
-                  ? true
-                  : wouldLoseThreshold
+              ...post,
+              likes: newLikeCount,
+              isLiked: !isCurrentlyLiked,
+              thresholdMet: willMeetThreshold
+                ? true
+                : wouldLoseThreshold
                   ? false
                   : post.thresholdMet,
-                commentsEnabled: willMeetThreshold
-                  ? true
-                  : wouldLoseThreshold
+              commentsEnabled: willMeetThreshold
+                ? true
+                : wouldLoseThreshold
                   ? false
                   : post.commentsEnabled,
-                commentsEnabledAt: willMeetThreshold
-                  ? new Date().toISOString()
-                  : wouldLoseThreshold
+              commentsEnabledAt: willMeetThreshold
+                ? new Date().toISOString()
+                : wouldLoseThreshold
                   ? null
                   : post.commentsEnabledAt,
-              }
+            }
             : post
         );
 
@@ -984,8 +1016,8 @@ const FeedPage = ({ params = {}, singlePostMode = false, postId = null }) => {
           ) {
             toast.error(
               error.response.data.message ||
-                error.response.data.error ||
-                "Cannot unlike - this like maintains the post's threshold status"
+              error.response.data.error ||
+              "Cannot unlike - this like maintains the post's threshold status"
             );
           } else {
             const errorMsg =
@@ -1022,13 +1054,13 @@ const FeedPage = ({ params = {}, singlePostMode = false, postId = null }) => {
           prevPosts.map((post) =>
             post.id === postId
               ? {
-                  ...post,
-                  likes: currentPost.likes, // Restore original like count
-                  isLiked: isCurrentlyLiked, // Restore original liked state
-                  thresholdMet: currentPost.thresholdMet, // Restore original threshold
-                  commentsEnabled: currentPost.commentsEnabled,
-                  commentsEnabledAt: currentPost.commentsEnabledAt,
-                }
+                ...post,
+                likes: currentPost.likes, // Restore original like count
+                isLiked: isCurrentlyLiked, // Restore original liked state
+                thresholdMet: currentPost.thresholdMet, // Restore original threshold
+                commentsEnabled: currentPost.commentsEnabled,
+                commentsEnabledAt: currentPost.commentsEnabledAt,
+              }
               : post
           );
 
@@ -1066,10 +1098,10 @@ const FeedPage = ({ params = {}, singlePostMode = false, postId = null }) => {
         prevPosts.map((post) =>
           post.id === postId
             ? {
-                ...post,
-                saves: isCurrentlySaved ? post.saves - 1 : post.saves + 1,
-                isSaved: !isCurrentlySaved,
-              }
+              ...post,
+              saves: isCurrentlySaved ? post.saves - 1 : post.saves + 1,
+              isSaved: !isCurrentlySaved,
+            }
             : post
         );
 
@@ -1091,10 +1123,10 @@ const FeedPage = ({ params = {}, singlePostMode = false, postId = null }) => {
           prevPosts.map((post) =>
             post.id === postId
               ? {
-                  ...post,
-                  saves: isCurrentlySaved ? post.saves + 1 : post.saves - 1,
-                  isSaved: isCurrentlySaved,
-                }
+                ...post,
+                saves: isCurrentlySaved ? post.saves + 1 : post.saves - 1,
+                isSaved: isCurrentlySaved,
+              }
               : post
           );
 
@@ -1398,8 +1430,7 @@ const FeedPage = ({ params = {}, singlePostMode = false, postId = null }) => {
 
     if (!canPost) {
       toast.error(
-        `Like ${likesRemaining} post${
-          likesRemaining !== 1 ? "s" : ""
+        `Like ${likesRemaining} post${likesRemaining !== 1 ? "s" : ""
         } to unlock posting`,
         {
           duration: 3000,
@@ -1480,11 +1511,10 @@ const FeedPage = ({ params = {}, singlePostMode = false, postId = null }) => {
                     <button
                       key={category}
                       onClick={() => handleCategoryChange(category)}
-                      className={`w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors flex items-center gap-3 ${
-                        selectedCategory === category
-                          ? "bg-gray-100 font-semibold"
-                          : ""
-                      }`}
+                      className={`w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors flex items-center gap-3 ${selectedCategory === category
+                        ? "bg-gray-100 font-semibold"
+                        : ""
+                        }`}
                     >
                       {IconComponent && (
                         <IconComponent className="w-5 h-5 flex-shrink-0" />
@@ -1529,11 +1559,10 @@ const FeedPage = ({ params = {}, singlePostMode = false, postId = null }) => {
                             onClick={() =>
                               handleCreativesSubFilterChange(option.key)
                             }
-                            className={`w-full text-left py-2 px-4 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors flex items-center gap-3 ${
-                              creativesSubFilter === option.key
-                                ? "bg-gray-100 font-semibold"
-                                : ""
-                            }`}
+                            className={`w-full text-left py-2 px-4 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors flex items-center gap-3 ${creativesSubFilter === option.key
+                              ? "bg-gray-100 font-semibold"
+                              : ""
+                              }`}
                           >
                             {IconComponent && (
                               <IconComponent className="w-5 h-5 flex-shrink-0" />
@@ -1552,9 +1581,8 @@ const FeedPage = ({ params = {}, singlePostMode = false, postId = null }) => {
 
       {/* Feed Content */}
       <div
-        className={`max-w-[400px] md:max-w-2xl mx-auto px-4 pb-0 ${
-          urlCategory === "new" ? "pt-[140px]" : "pt-[90px]" // Increased padding to account for headers
-        }`}
+        className={`max-w-[400px] md:max-w-2xl mx-auto px-4 pb-0 ${selectedCategory === "new" ? "pt-[140px]" : "pt-[90px]" // Increased padding to account for headers
+          }`}
       >
         {singlePostMode ? (
           // Single post mode rendering

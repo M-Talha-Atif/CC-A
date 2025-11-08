@@ -928,6 +928,30 @@ const page = () => {
     }
   };
 
+   const handleInputPasswordChange = (field, value) => {
+
+    setFormData((prev) => ({ ...prev, [field]: value })); // <-- THIS FIXES THE UI
+
+    // Validation logic with debounce
+   if (field === "password") {
+      // Hide error while typing
+      setShowPasswordError(false);
+
+      // Clear existing timer
+      if (passwordTypingTimer) {
+        clearTimeout(passwordTypingTimer);
+      }
+
+      // Set new timer
+      const newTimer = setTimeout(() => {
+        validatePassword(value);
+        // setShowPasswordError(true);
+      }, 800);
+
+      setPasswordTypingTimer(newTimer);
+    } 
+  };
+
   const goToNextStep = async (stepCompleted = null) => {
     const currentIndex = steps.indexOf(currentStep);
     if (currentIndex < steps.length - 1) {
@@ -1888,7 +1912,7 @@ const page = () => {
                       type={showPassword ? "text" : "password"}
                       value={formData.password}
                       onChange={(e) =>
-                        handleInputChange("password", e.target.value)
+                        handleInputPasswordChange("password", e.target.value)
                       }
                       disabled={isLoading}
                       className={`w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent ${isLoading ? "bg-gray-100 cursor-not-allowed" : ""

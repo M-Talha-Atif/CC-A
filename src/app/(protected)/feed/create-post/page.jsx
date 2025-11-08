@@ -115,24 +115,50 @@ const CreatePage = () => {
     }
   }, []);
 
-  // iOS-safe content change handler
-  const handleContentChange = useCallback(
-    (e) => {
-      const text = e.target.value;
-      if (text.length <= 500) {
-        setContent(text);
+  // // iOS-safe content change handler
+  // const handleContentChange = useCallback(
+  //   (e) => {
+  //     const text = e.target.value;
+  //     if (text.length <= 500) {
+  //       setContent(text);
 
-        // Immediately update height for content textarea
-        if (textareaRef.current) {
-          textareaRef.current.style.height = "auto";
-          const maxHeight = type === "poll" ? 200 : 500;
-          textareaRef.current.style.height =
-            Math.min(textareaRef.current.scrollHeight, maxHeight) + "px";
-        }
-      }
-    },
-    [type]
-  );
+  //       // Immediately update height for content textarea
+  //       if (textareaRef.current) {
+  //         textareaRef.current.style.height = "auto";
+  //         const maxHeight = type === "poll" ? 200 : 500;
+  //         textareaRef.current.style.height =
+  //           Math.min(textareaRef.current.scrollHeight, maxHeight) + "px";
+  //       }
+  //     }
+  //   },
+  //   [type]
+  // );
+
+  // // iOS-safe subject change handler
+  // const handleSubjectChange = useCallback((e) => {
+  //   const text = e.target.value;
+
+  //   if (text.length > 150) {
+  //     toast.error("Subject cannot exceed 150 characters.");
+  //     return;
+  //   }
+
+  //   if (containsUrl(text)) {
+  //     toast.error(
+  //       "Links are not allowed in the subject. Only text and emoji are permitted."
+  //     );
+  //     return;
+  //   }
+
+  //   setSubject(text);
+
+  //   // Immediately update height for subject textarea
+  //   if (textareaSubjectRef.current) {
+  //     textareaSubjectRef.current.style.height = "auto";
+  //     textareaSubjectRef.current.style.height =
+  //       textareaSubjectRef.current.scrollHeight + "px";
+  //   }
+  // }, []);
 
   // iOS-safe subject change handler
   const handleSubjectChange = useCallback((e) => {
@@ -151,31 +177,32 @@ const CreatePage = () => {
     }
 
     setSubject(text);
+  }, []);
 
-    // Immediately update height for subject textarea
-    if (textareaSubjectRef.current) {
-      textareaSubjectRef.current.style.height = "auto";
-      textareaSubjectRef.current.style.height =
-        textareaSubjectRef.current.scrollHeight + "px";
+  // iOS-safe content change handler
+  const handleContentChange = useCallback((e) => {
+    const text = e.target.value;
+    if (text.length <= 500) {
+      setContent(text);
     }
   }, []);
 
-  useEffect(() => {
-    if (textareaRef.current) {
-      textareaRef.current.style.height = "auto";
-      const maxHeight = type === "poll" ? 200 : 500;
-      textareaRef.current.style.height =
-        Math.min(textareaRef.current.scrollHeight, maxHeight) + "px";
-    }
-  }, [content, type]);
+  // useEffect(() => {
+  //   if (textareaRef.current) {
+  //     textareaRef.current.style.height = "auto";
+  //     const maxHeight = type === "poll" ? 200 : 500;
+  //     textareaRef.current.style.height =
+  //       Math.min(textareaRef.current.scrollHeight, maxHeight) + "px";
+  //   }
+  // }, [content, type]);
 
-  useEffect(() => {
-    if (textareaSubjectRef.current) {
-      textareaSubjectRef.current.style.height = "auto";
-      textareaSubjectRef.current.style.height =
-        textareaSubjectRef.current.scrollHeight + "px";
-    }
-  }, [subject]);
+  // useEffect(() => {
+  //   if (textareaSubjectRef.current) {
+  //     textareaSubjectRef.current.style.height = "auto";
+  //     textareaSubjectRef.current.style.height =
+  //       textareaSubjectRef.current.scrollHeight + "px";
+  //   }
+  // }, [subject]);
 
   useEffect(() => {
     if (type === "poll") {
@@ -515,7 +542,7 @@ const CreatePage = () => {
         if (result.error.status === 429) {
           toast.error(
             result.error.message ||
-              "You have hit the limit allowed for this hour. Please try again later",
+            "You have hit the limit allowed for this hour. Please try again later",
             {
               duration: 5000,
             }
@@ -583,7 +610,7 @@ const CreatePage = () => {
           ))}
         </div>
 
-        <LinkifyText onContentClick={() => {}} text={post.content} />
+        <LinkifyText onContentClick={() => { }} text={post.content} />
         {post.type === "poll" && post.pollOptions && (
           <div className="sm:p-4 rounded-lg mt-3">
             {post.pollOptions.map((option, index) => {
@@ -593,14 +620,14 @@ const CreatePage = () => {
                   className="w-full flex items-center justify-between mb-2 cursor-not-allowed"
                 >
                   <div className="flex-1 flex justify-center">
+
                     <span
-                      className={`text-sm text-gray-700 py-1 px-3 w-[200px] text-center rounded-full ease-in-out transition-all break-words whitespace-normal min-h-[32px] flex items-center justify-center ${
-                        post.hasVoted
-                          ? option.isUserChoice
-                            ? "bg-blue-200 text-blue-800 font-semibold"
-                            : "bg-gray-200 opacity-75"
+                      className={`text-sm text-gray-700 py-1 px-3 w-[200px] text-center rounded-full ease-in-out transition-all break-words whitespace-normal min-h-[32px] flex items-center justify-center ${post.hasVoted
+                        ? option.isUserChoice
+                          ? "bg-blue-200 text-blue-800 font-semibold"
                           : "bg-gray-200 opacity-75"
-                      }`}
+                        : "bg-gray-200 opacity-75"
+                        }`}
                       style={{
                         wordBreak: "break-word",
                         overflowWrap: "break-word",
@@ -666,13 +693,12 @@ const CreatePage = () => {
                     setType((prev) => (prev === "text" ? "poll" : "text"))
                   }
                   disabled={isCouplesSelected}
-                  className={`p-3 rounded-full transition-colors ${
-                    isCouplesSelected
-                      ? "text-gray-300 cursor-not-allowed"
-                      : type === "poll"
+                  className={`p-3 rounded-full transition-colors ${isCouplesSelected
+                    ? "text-gray-300 cursor-not-allowed"
+                    : type === "poll"
                       ? "text-gray-900"
                       : "text-gray-600"
-                  }`}
+                    }`}
                   title={type === "poll" ? "Disable poll" : "Create a poll"}
                 >
                   <Vote size={24} />
@@ -824,6 +850,7 @@ const CreatePage = () => {
                 )}
               </div>
               {/* Subject */}
+              {/* Subject */}
               <div className="mb-1 flex items-center md:gap-3">
                 <label className="block text-sm font-medium text-gray-700 mt-[2px]">
                   Subject
@@ -838,24 +865,37 @@ const CreatePage = () => {
                     maxLength={150}
                     style={{
                       minHeight: "40px",
+                      maxHeight: "120px",
                       lineHeight: "1.5",
                       WebkitAppearance: "none",
                       WebkitUserSelect: "text",
                       WebkitTouchCallout: "none",
-                      touchAction: "manipulation",
-                      overflowY: "hidden",
+                      WebkitOverflowScrolling: "touch",
+                      touchAction: "pan-y",
+                      overflowY: "auto",
                       wordWrap: "break-word",
                       whiteSpace: "pre-wrap",
+                      WebkitTransform: "translateZ(0)", // Hardware acceleration
+                      transform: "translateZ(0)",
                     }}
                     rows={1}
                     autoComplete="off"
                     autoCorrect="off"
                     spellCheck="false"
                     autoCapitalize="sentences"
+                    onInput={(e) => {
+                      // iOS immediate height adjustment
+                      const target = e.target;
+                      target.style.height = 'auto';
+                      const newHeight = Math.min(target.scrollHeight, 120);
+                      target.style.height = newHeight + 'px';
+                      target.style.overflowY = newHeight >= 120 ? 'auto' : 'hidden';
+                    }}
                   />
                 </div>
               </div>
               <div className="mb-4 w-full h-px bg-gray-300 mx-auto"></div>
+              {/* Content */}
               {/* Content */}
               <div className="">
                 <textarea
@@ -863,7 +903,7 @@ const CreatePage = () => {
                   value={content}
                   onChange={handleContentChange}
                   placeholder="Share your thoughts, tips, or experiences..."
-                  className="w-full px-4 py-3 rounded-lg focus:ring-0 focus:outline-none resize-none overflow-hidden"
+                  className="w-full px-4 py-3 rounded-lg focus:ring-0 focus:outline-none resize-none"
                   style={{
                     minHeight: type === "poll" ? "60px" : "100px",
                     maxHeight: type === "poll" ? "200px" : "500px",
@@ -871,10 +911,13 @@ const CreatePage = () => {
                     WebkitAppearance: "none",
                     WebkitUserSelect: "text",
                     WebkitTouchCallout: "none",
-                    touchAction: "manipulation",
-                    overflowY: "auto", // Change from "hidden" to "auto"
+                    WebkitOverflowScrolling: "touch",
+                    touchAction: "pan-y",
+                    overflowY: "auto",
                     wordWrap: "break-word",
                     whiteSpace: "pre-wrap",
+                    WebkitTransform: "translateZ(0)", // Hardware acceleration
+                    transform: "translateZ(0)",
                   }}
                   maxLength={500}
                   rows={type === "poll" ? 2 : 4}
@@ -882,6 +925,15 @@ const CreatePage = () => {
                   autoCorrect="off"
                   spellCheck="false"
                   autoCapitalize="sentences"
+                  onInput={(e) => {
+                    // iOS immediate height adjustment
+                    const target = e.target;
+                    const maxHeight = type === "poll" ? 200 : 500;
+                    target.style.height = 'auto';
+                    const newHeight = Math.min(target.scrollHeight, maxHeight);
+                    target.style.height = newHeight + 'px';
+                    target.style.overflowY = newHeight >= maxHeight ? 'auto' : 'hidden';
+                  }}
                 />
               </div>
               {type === "poll" && (
@@ -900,44 +952,28 @@ const CreatePage = () => {
                               value={option}
                               onChange={(e) => {
                                 const text = e.target.value;
-                                // Character limit for 2 lines in the bubble
-                                const MAX_CHARS = 34;
-
+                                const MAX_CHARS = 40;
                                 if (text.length <= MAX_CHARS) {
                                   handlePollOptionChange(text, index);
-
-                                  // Auto-resize the textarea
                                   const textarea = e.target;
                                   textarea.style.height = "auto";
-                                  textarea.style.height =
-                                    Math.min(textarea.scrollHeight, 80) + "px"; // Max height for 2 lines
+                                  textarea.style.height = Math.min(textarea.scrollHeight, 64) + "px";
                                 }
                               }}
                               placeholder={`Option ${index + 1}`}
-                              className="flex-grow px-1 md:px-4 py-2 rounded-lg text-center focus:ring-0 focus:outline-none bg-transparent resize-none"
+                              className="flex-grow px-1 md:px-4 py-2 rounded-lg text-center focus:ring-0 focus:outline-none bg-transparent resize-none leading-snug font-mono"
                               style={{
                                 minHeight: "44px",
-                                maxHeight: "80px", // Max height for 2 lines
+                                maxHeight: "64px",
                                 lineHeight: "1.4",
                                 overflow: "hidden",
-                                wordWrap: "break-word",
+                                wordBreak: "break-all",
                                 whiteSpace: "pre-wrap",
-                                WebkitAppearance: "none",
-                              }}
-                              rows={1}
-                              onFocus={(e) => {
-                                // Initialize height on focus
-                                e.target.style.height = "auto";
-                                e.target.style.height =
-                                  Math.min(e.target.scrollHeight, 80) + "px";
-                              }}
-                              onBlur={(e) => {
-                                // Reset to minimal height when empty, otherwise maintain
-                                if (!e.target.value) {
-                                  e.target.style.height = "44px";
-                                }
                               }}
                             />
+
+
+
                             <button
                               type="button"
                               onClick={() => removePollOption(index)}

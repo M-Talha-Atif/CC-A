@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
-import { useScrollVisibility } from "@/hooks/useScrollVisibility";
+import { useScrollVisibility } from "@/hooks/useScrollVisibilityContext";
 import { ChevronDown, AlignLeft, X } from "lucide-react";
 import PhotograherIcon from "../../../../components/icons/FilterIcons/PhotograherIcon";
 import VideographerIcon from "../../../../components/icons/FilterIcons/VideographerIcon";
@@ -31,6 +31,9 @@ const SmoothScrollHeader = ({
 
     return iconMap[creativesSubFilter] || SeeAllIcon;
   };
+  // const check = () => {
+  //  setIsDropdownOpen(true)
+  // }
 
   const FilterIcon = getFilterIcon();
 
@@ -84,7 +87,17 @@ const SmoothScrollHeader = ({
           <div className="flex gap-2">
             {/* Category Dropdown Button */}
             <button
-              onClick={() => setIsDropdownOpen(true)}
+              onClick={() => {
+                console.log('🎪 Dropdown button clicked - current scroll:', window.scrollY);
+                setIsDropdownOpen(true);
+
+                // Debug: Check scroll state before and after
+                const beforeScroll = window.scrollY;
+                setTimeout(() => {
+                  const afterScroll = window.scrollY;
+                  console.log('📊 Scroll before/after click:', { beforeScroll, afterScroll });
+                }, 10);
+              }}
               className="flex-1 px-2 py-2.5 rounded-xl flex items-center transition-colors"
             >
               <span className="text-gray-700 font-medium">

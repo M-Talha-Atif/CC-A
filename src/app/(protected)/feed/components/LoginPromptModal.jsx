@@ -3,29 +3,89 @@
 
 import { useRouter } from "next/navigation";
 import { X } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import Portal from "@/components/Portal";
 
 export const LoginPromptModal = ({ onClose }) => {
   const router = useRouter();
+  const scrollYRef = useRef(0);
 
   useEffect(() => {
-    // Prevent scrolling when modal is open
-    document.body.style.overflow = "hidden";
+    // Store the current scroll position
+    scrollYRef.current = window.scrollY;
+
+    // Get the computed style to check if body already has position fixed
+    const body = document.body;
+    const scrollBarWidth = window.innerWidth - document.documentElement.clientWidth;
+    
+    // Apply scroll lock
+    body.style.position = 'fixed';
+    body.style.top = `-${scrollYRef.current}px`;
+    body.style.left = '0';
+    body.style.right = '0';
+    body.style.overflow = 'hidden';
+    body.style.width = '100%';
+    
+    // Compensate for scrollbar gap to prevent layout shift
+    if (scrollBarWidth > 0) {
+      body.style.paddingRight = `${scrollBarWidth}px`;
+    }
+
+    // Prevent touch move events on the document
+    const preventTouchMove = (e) => {
+      // Allow touch moves only on non-scrollable elements or the modal itself
+      const isModalContent = e.target.closest('[data-modal-content]');
+      if (!isModalContent) {
+        e.preventDefault();
+      }
+    };
+
+    document.addEventListener('touchmove', preventTouchMove, { passive: false });
 
     // Cleanup: restore scrolling when modal closes
     return () => {
-      document.body.style.overflow = "unset";
+      document.removeEventListener('touchmove', preventTouchMove);
+      
+      const body = document.body;
+      const scrollY = parseInt(body.style.top || '0');
+      
+      // Restore styles
+      body.style.position = '';
+      body.style.top = '';
+      body.style.left = '';
+      body.style.right = '';
+      body.style.overflow = '';
+      body.style.width = '';
+      body.style.paddingRight = '';
+      
+      // Restore scroll position
+      window.scrollTo(0, Math.abs(scrollY) || scrollYRef.current);
     };
   }, []);
+
+  // Handle escape key
+  useEffect(() => {
+    const handleEscape = (e) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [onClose]);
 
   return (
     <Portal>
       <div className="fixed inset-0 bg-[#00000090] bg-opacity-50 flex items-center justify-center z-50 p-4">
-        <div className="bg-white rounded-2xl max-w-md w-full px-6 py-8 relative">
+        <div 
+          className="bg-white rounded-2xl max-w-md w-full px-6 py-8 relative"
+          data-modal-content // This allows touch scrolling within the modal if needed
+        >
           <button
             onClick={onClose}
             className="absolute top-2 right-3 text-gray-400 hover:text-gray-600 transition-colors"
+            aria-label="Close modal"
           >
             <X size={24} />
           </button>

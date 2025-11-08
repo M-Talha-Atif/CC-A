@@ -1,5 +1,5 @@
 "use client";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import {
   Share,
   Search,
@@ -47,6 +47,70 @@ const Sidebar = ({
   const [showReferralInfo, setShowReferralInfo] = useState(false);
 
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+    // Add these refs for scroll locking
+  const scrollYRef = useRef(0);
+  const scrollLockApplied = useRef(false);
+
+  // Scroll locking effect
+  useEffect(() => {
+    if (sidebarOpen) {
+      // Store current scroll position
+      scrollYRef.current = window.scrollY;
+      
+      // Apply scroll lock
+      const body = document.body;
+      const scrollBarWidth = window.innerWidth - document.documentElement.clientWidth;
+      
+      body.style.position = 'fixed';
+      body.style.top = `-${scrollYRef.current}px`;
+      body.style.left = '0';
+      body.style.right = '0';
+      body.style.overflow = 'hidden';
+      body.style.width = '100%';
+      
+      // Compensate for scrollbar gap to prevent layout shift
+      if (scrollBarWidth > 0) {
+        body.style.paddingRight = `${scrollBarWidth}px`;
+      }
+      
+      scrollLockApplied.current = true;
+
+      // Prevent touch move on background
+      const preventTouchMove = (e) => {
+        // Allow touch moves only within the sidebar
+        const isSidebarContent = e.target.closest('[data-sidebar-content]');
+        if (!isSidebarContent) {
+          e.preventDefault();
+        }
+      };
+
+      document.addEventListener('touchmove', preventTouchMove, { passive: false });
+
+      return () => {
+        document.removeEventListener('touchmove', preventTouchMove);
+        
+        // Only restore if we applied the lock
+        if (scrollLockApplied.current) {
+          const body = document.body;
+          const scrollY = parseInt(body.style.top || '0');
+          
+          // Restore styles
+          body.style.position = '';
+          body.style.top = '';
+          body.style.left = '';
+          body.style.right = '';
+          body.style.overflow = '';
+          body.style.width = '';
+          body.style.paddingRight = '';
+          
+          // Restore scroll position
+          window.scrollTo(0, Math.abs(scrollY) || scrollYRef.current);
+          scrollLockApplied.current = false;
+        }
+      };
+    }
+  }, [sidebarOpen]);
 
   // Update points when totalPoints prop changes
   useEffect(() => {
@@ -314,6 +378,7 @@ const Sidebar = ({
         className={`fixed top-0 left-0 h-full w-64 md:w-80 bg-[#e5e5e5] z-50 transform transition-transform duration-300 ease-in-out ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
+        data-sidebar-content 
       >
         <div className="p-6 pt-3 h-full flex flex-col">
           {/* Sidebar Header */}

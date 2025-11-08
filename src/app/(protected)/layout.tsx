@@ -23,7 +23,7 @@ import {
 
 import NotificationIcon from "../../components/icons/NotificationIcon";
 import ActiveNotificationIcon from "../../components/icons/ActiveNotificationIcon";
-import { useScrollVisibility } from "@/hooks/useScrollVisibility";
+import { useScrollVisibility } from "@/hooks/useScrollVisibilityContext";
 import { motion } from "framer-motion";
 
 // Extend the Window interface to include custom properties

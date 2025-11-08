@@ -6,6 +6,7 @@ import { GoogleOAuthProvider } from "@react-oauth/google";
 import DesktopRestriction from "@/components/DesktopRestriction";
 import SessionManager from "@/components/SessionManager";
 import HelpCenter from "./(protected)/help-center/page";
+import { ScrollVisibilityProvider } from "@/hooks/useScrollVisibilityContext";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -135,7 +136,12 @@ export default function RootLayout({
           clientId={`${process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID}`}
         >
           <DesktopRestriction>
-            <SessionManager>{children}</SessionManager>
+            <SessionManager>   {/* WRAP children with ScrollVisibilityProvider */}
+              <ScrollVisibilityProvider>
+                {children}
+              </ScrollVisibilityProvider>
+              </SessionManager>
+            
             <div id="modal-root"></div>
             <HelpCenter />
           </DesktopRestriction>
