@@ -41,7 +41,6 @@ import {
 } from "../../../../../action";
 import Loader from "../../../../components/Loader";
 import { toast, Toaster } from "sonner";
-import Image from "next/image";
 import ChatroomModal from "../chatroom/components/ChatroomModal";
 import Post from "./Post";
 import useUserStore from "../../../../store/userStore";
@@ -49,7 +48,6 @@ import { generateSlug } from "../../../../utils/slug";
 import { LoginPromptModal } from "./LoginPromptModal";
 import SmoothScrollHeader from "./SmoothScrollHeader";
 import { motion } from "framer-motion";
-
 import PostingIcon from "../../../../components/icons/PostingIcon";
 // Main filter icons
 import NewFeedIcon from "../../../../components/icons/FilterIcons/NewFeedIcons";
@@ -59,7 +57,6 @@ import CouplesFeedIcon from "../../../../components/icons/FilterIcons/CouplesFee
 import BookmarkFeedIcon from "../../../../components/icons/FilterIcons/BookmarkFeedIcon";
 import MyPostFeedIcon from "../../../../components/icons/FilterIcons/MyPostFeedIcon";
 import ChatroomFeedIcon from "../../../../components/icons/FilterIcons/ChatroomFeedIcon";
-
 // Sub Filter icons
 import PhotograherIcon from "../../../../components/icons/FilterIcons/PhotograherIcon";
 import VideographerIcon from "../../../../components/icons/FilterIcons/VideographerIcon";
@@ -67,6 +64,7 @@ import FloristIcon from "../../../../components/icons/FilterIcons/FloristIcon";
 import PlannerIcon from "../../../../components/icons/FilterIcons/PlannerIcon";
 import SeeAllIcon from "../../../../components/icons/FilterIcons/SeeAllIcon";
 import Portal from "../../../../components/Portal";
+import { useScrollVisibility } from "@/hooks/useScrollVisibilityContext";
 
 const FeedPage = ({ params = {}, singlePostMode = false, postId = null }) => {
   const router = useRouter();
@@ -142,8 +140,6 @@ const FeedPage = ({ params = {}, singlePostMode = false, postId = null }) => {
     Planner: PlannerIcon,
     all: SeeAllIcon,
   };
-
-
 
   // 3. Update getCategoriesForUser array
   const getCategoriesForUser = useMemo(() => {
@@ -234,7 +230,9 @@ const FeedPage = ({ params = {}, singlePostMode = false, postId = null }) => {
     post: null,
   });
 
-  const [showCreateButton, setShowCreateButton] = useState(true);
+  const { isVisible, isAtTop } = useScrollVisibility();
+
+  const [showCreateButton, setShowCreateButton] = useState(isVisible);
   const lastScrollYRef = useRef(0);
   const tickingRef = useRef(false);
   const [fetchError, setFetchError] = useState(null);
@@ -243,32 +241,32 @@ const FeedPage = ({ params = {}, singlePostMode = false, postId = null }) => {
   const [singlePostError, setSinglePostError] = useState(null);
 
   const POSTS_PER_PAGE = 10;
-  useEffect(() => {
-    let rafId;
+  // useEffect(() => {
+  //   let rafId;
 
-    const handleScroll = () => {
-      if (rafId) return;
+  //   const handleScroll = () => {
+  //     if (rafId) return;
 
-      rafId = requestAnimationFrame(() => {
-        const scrollY = window.scrollY;
+  //     rafId = requestAnimationFrame(() => {
+  //       const scrollY = window.scrollY;
 
-        if (scrollY <= 100) {
-          setShowCreateButton(true);
-        } else {
-          setShowCreateButton(scrollY < lastScrollYRef.current);
-        }
+  //       if (scrollY <= 100) {
+  //         setShowCreateButton(true);
+  //       } else {
+  //         setShowCreateButton(scrollY < lastScrollYRef.current);
+  //       }
 
-        lastScrollYRef.current = scrollY;
-        rafId = null;
-      });
-    };
+  //       lastScrollYRef.current = scrollY;
+  //       rafId = null;
+  //     });
+  //   };
 
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => {
-      window.removeEventListener("scroll", handleScroll);
-      if (rafId) cancelAnimationFrame(rafId);
-    };
-  }, []);
+  //   window.addEventListener("scroll", handleScroll, { passive: true });
+  //   return () => {
+  //     window.removeEventListener("scroll", handleScroll);
+  //     if (rafId) cancelAnimationFrame(rafId);
+  //   };
+  // }, []);
 
   const fetchSinglePost = useCallback(async (postId) => {
     if (!postId || !mountedRef.current) {
@@ -593,8 +591,6 @@ const FeedPage = ({ params = {}, singlePostMode = false, postId = null }) => {
     creativesSubFilter,
   ]);
 
-
-
   useEffect(() => {
     if (searchTimeoutRef.current) {
       clearTimeout(searchTimeoutRef.current);
@@ -850,10 +846,6 @@ const FeedPage = ({ params = {}, singlePostMode = false, postId = null }) => {
     [router, urlMappings, singlePostMode]
   );
 
-  const handleSortChange = useCallback((newSortBy) => {
-    setSortBy(newSortBy);
-    setIsFilterOpen(false);
-  }, []);
 
   // New handler for creative sub-filter changes
   const handleCreativesSubFilterChange = useCallback(
@@ -983,7 +975,7 @@ const FeedPage = ({ params = {}, singlePostMode = false, postId = null }) => {
           } else {
             // General API error
             if (isCurrentlyLiked) {
-              toast.error("Failed to unlike post.");
+              toast.error("Action not permitted.");
             } else {
               toast.error("Failed to like post.");
             }
@@ -1006,7 +998,7 @@ const FeedPage = ({ params = {}, singlePostMode = false, postId = null }) => {
               toast.error(errorMsg);
             } else {
               if (isCurrentlyLiked) {
-                toast.error("Failed to unlike post.");
+                toast.error("Action not permitted.");
               } else {
                 toast.error("Failed to like post.");
               }
@@ -1015,7 +1007,7 @@ const FeedPage = ({ params = {}, singlePostMode = false, postId = null }) => {
         } else {
           // Network or other error
           if (isCurrentlyLiked) {
-            toast.error("Failed to unlike post.");
+            toast.error("Action not permitted.");
           } else {
             toast.error("Failed to like post.");
           }
@@ -1761,10 +1753,10 @@ const FeedPage = ({ params = {}, singlePostMode = false, postId = null }) => {
       {user?.userType !== "couple" && isAuthenticated && (
         <motion.button
           onClick={handleCreatePost}
-          initial={{ y: 100, opacity: 0 }}
+          initial={{ y: 0, opacity: 0 }}
           animate={{
-            y: showCreateButton ? 0 : 10,
-            opacity: showCreateButton ? 1 : 0,
+            // y: isVisible ? 0 : 0,
+            opacity: isVisible ? 1 : 0,
           }}
           transition={{
             type: "spring",
@@ -1773,7 +1765,7 @@ const FeedPage = ({ params = {}, singlePostMode = false, postId = null }) => {
             mass: 0.5,
           }}
           style={{
-            pointerEvents: showCreateButton ? "auto" : "none",
+            pointerEvents: isVisible ? "auto" : "none",
           }}
           className="fixed cursor-pointer bottom-6 right-6 w-14 h-14 flex items-center justify-center shadow-lg rounded-4xl transition-all hover:scale-105"
         >

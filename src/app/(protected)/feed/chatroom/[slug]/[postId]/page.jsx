@@ -2,7 +2,6 @@
 
 import axios from "axios";
 import React from "react";
-import { Metadata } from "next";
 import ChatroomClient from "./components/ChatroomClient";
 
 export async function generateMetadata({ params }) {

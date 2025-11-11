@@ -46,6 +46,7 @@ const CreatePage = () => {
   const dropdownRef = useRef(null);
   const popstateHandlerRef = useRef(null);
   const isIOSRef = useRef(false);
+  const hasUnsavedContentRef = useRef(false);
 
   const { isAuthenticated, hasHydrated } = useUserStore();
 
@@ -91,134 +92,110 @@ const CreatePage = () => {
       (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
   }, []);
 
-  // iOS-safe height update function
-  const updateTextareaHeight = useCallback((textarea, maxHeight) => {
-    if (!textarea || isUpdatingRef.current) return;
+  // // iOS-safe height update function
+  // const updateTextareaHeight = useCallback((textarea, maxHeight) => {
+  //   if (!textarea || isUpdatingRef.current) return;
 
-    const key = textarea === textareaRef.current ? "content" : "subject";
+  //   const key = textarea === textareaRef.current ? "content" : "subject";
 
-    try {
-      isUpdatingRef.current = true;
+  //   try {
+  //     isUpdatingRef.current = true;
 
-      // Only update if height actually changed
-      const currentScrollHeight = textarea.scrollHeight;
-      const newHeight = Math.min(currentScrollHeight, maxHeight);
+  //     // Only update if height actually changed
+  //     const currentScrollHeight = textarea.scrollHeight;
+  //     const newHeight = Math.min(currentScrollHeight, maxHeight);
 
-      if (lastHeightRef.current[key] !== newHeight) {
-        textarea.style.height = `${newHeight}px`;
-        lastHeightRef.current[key] = newHeight;
-      }
-    } catch (error) {
-      console.warn("Textarea resize failed:", error);
-    } finally {
-      isUpdatingRef.current = false;
-    }
-  }, []);
-
-  // // iOS-safe content change handler
-  // const handleContentChange = useCallback(
-  //   (e) => {
-  //     const text = e.target.value;
-  //     if (text.length <= 500) {
-  //       setContent(text);
-
-  //       // Immediately update height for content textarea
-  //       if (textareaRef.current) {
-  //         textareaRef.current.style.height = "auto";
-  //         const maxHeight = type === "poll" ? 200 : 500;
-  //         textareaRef.current.style.height =
-  //           Math.min(textareaRef.current.scrollHeight, maxHeight) + "px";
-  //       }
+  //     if (lastHeightRef.current[key] !== newHeight) {
+  //       textarea.style.height = `${newHeight}px`;
+  //       lastHeightRef.current[key] = newHeight;
   //     }
-  //   },
-  //   [type]
-  // );
-
-  // // iOS-safe subject change handler
-  // const handleSubjectChange = useCallback((e) => {
-  //   const text = e.target.value;
-
-  //   if (text.length > 150) {
-  //     toast.error("Subject cannot exceed 150 characters.");
-  //     return;
-  //   }
-
-  //   if (containsUrl(text)) {
-  //     toast.error(
-  //       "Links are not allowed in the subject. Only text and emoji are permitted."
-  //     );
-  //     return;
-  //   }
-
-  //   setSubject(text);
-
-  //   // Immediately update height for subject textarea
-  //   if (textareaSubjectRef.current) {
-  //     textareaSubjectRef.current.style.height = "auto";
-  //     textareaSubjectRef.current.style.height =
-  //       textareaSubjectRef.current.scrollHeight + "px";
+  //   } catch (error) {
+  //     console.warn("Textarea resize failed:", error);
+  //   } finally {
+  //     isUpdatingRef.current = false;
   //   }
   // }, []);
+
+  // // iOS-safe content change handler
+  const handleContentChange = useCallback(
+    (e) => {
+      const text = e.target.value;
+      if (text.length <= 500) {
+        setContent(text);
+
+        // Immediately update height for content textarea
+        if (textareaRef.current) {
+          textareaRef.current.style.height = "auto";
+          const maxHeight = type === "poll" ? 200 : 500;
+          textareaRef.current.style.height =
+            Math.min(textareaRef.current.scrollHeight, maxHeight) + "px";
+        }
+      }
+    },
+    [type]
+  );
+
+  const subjectTimeoutRef = useRef(null);
 
   useEffect(() => {
     const textarea = textareaSubjectRef.current;
     if (!textarea) return;
 
-    const adjustHeight = () => {
-      textarea.style.height = 'auto';
-      const newHeight = Math.min(textarea.scrollHeight, 120);
-      textarea.style.height = newHeight + 'px';
-      textarea.style.overflowY = newHeight >= 120 ? 'auto' : 'hidden';
-    };
+    // Debounce the height adjustment
+    if (subjectTimeoutRef.current) {
+      clearTimeout(subjectTimeoutRef.current);
+    }
 
-    adjustHeight();
+    subjectTimeoutRef.current = setTimeout(() => {
+      requestAnimationFrame(() => {
+        textarea.style.height = 'auto';
+        const newHeight = Math.min(textarea.scrollHeight, 120);
+        textarea.style.height = newHeight + 'px';
+        textarea.style.overflowY = newHeight >= 120 ? 'auto' : 'hidden';
+      });
+    }, 90); // Increased debounce time
+
+    return () => {
+      if (subjectTimeoutRef.current) {
+        clearTimeout(subjectTimeoutRef.current);
+      }
+    };
   }, [subject]);
 
-  // iOS-safe subject change handler
+  // Update the handleSubjectChange to include debouncing
+  const subjectToastTimeoutRef = useRef(null);
+
   const handleSubjectChange = useCallback((e) => {
-    const text = e.target.value;
+    try {
+      const text = e.target.value;
 
-    // Check length first (before any other operations)
-    if (text.length > 150) {
-      e.preventDefault();
-      return;
+      if (text.length > 150) {
+        return;
+      }
+
+      if (containsUrl(text)) {
+        // Debounce the toast message
+        if (subjectToastTimeoutRef.current) {
+          clearTimeout(subjectToastTimeoutRef.current);
+        }
+
+        subjectToastTimeoutRef.current = setTimeout(() => {
+          toast.error(
+            "Links are not allowed in the subject. Only text and emoji are permitted.",
+            { duration: 2000 }
+          );
+        }, 500);
+
+        return;
+      }
+
+      setSubject(text);
+    } catch (error) {
+      console.error('Subject change error:', error);
     }
-
-    // Check for URLs
-    if (containsUrl(text)) {
-      e.preventDefault();
-      toast.error(
-        "Links are not allowed in the subject. Only text and emoji are permitted."
-      );
-      return;
-    }
-
-    setSubject(text);
   }, []);
-  // iOS-safe content change handler
-  const handleContentChange = useCallback((e) => {
-    const text = e.target.value;
-    if (text.length <= 500) {
-      setContent(text);
-    }
-  }, []);
 
-  // useEffect(() => {
-  //   if (textareaRef.current) {
-  //     textareaRef.current.style.height = "auto";
-  //     const maxHeight = type === "poll" ? 200 : 500;
-  //     textareaRef.current.style.height =
-  //       Math.min(textareaRef.current.scrollHeight, maxHeight) + "px";
-  //   }
-  // }, [content, type]);
 
-  // useEffect(() => {
-  //   if (textareaSubjectRef.current) {
-  //     textareaSubjectRef.current.style.height = "auto";
-  //     textareaSubjectRef.current.style.height =
-  //       textareaSubjectRef.current.scrollHeight + "px";
-  //   }
-  // }, [subject]);
 
   useEffect(() => {
     if (type === "poll") {
@@ -338,6 +315,13 @@ const CreatePage = () => {
     );
   };
 
+
+
+  // Update the ref when content changes, but don't trigger effects
+  useEffect(() => {
+    hasUnsavedContentRef.current = hasUnsavedContent();
+  }, [subject, content, selectedCategories, type, pollOptions]);
+
   // Effect to handle body scroll when modal is open
   useEffect(() => {
     if (showExitConfirm) {
@@ -382,14 +366,14 @@ const CreatePage = () => {
   // Override browser back button and layout back button
   useEffect(() => {
     const handleBeforeUnload = (e) => {
-      if (hasUnsavedContent()) {
+      if (hasUnsavedContentRef.current) {  // Use ref instead of function call
         e.preventDefault();
         e.returnValue = "";
       }
     };
 
     const handlePopState = (e) => {
-      if (hasUnsavedContent()) {
+      if (hasUnsavedContentRef.current) {  // Use ref instead of function call
         e.preventDefault();
         setShowExitConfirm(true);
         try {
@@ -401,10 +385,10 @@ const CreatePage = () => {
     };
 
     popstateHandlerRef.current = handlePopState;
-
     window.addEventListener("beforeunload", handleBeforeUnload);
     window.addEventListener("popstate", handlePopState);
 
+    // Only push state once on mount
     try {
       window.history.pushState(null, "", window.location.href);
     } catch (error) {
@@ -415,15 +399,16 @@ const CreatePage = () => {
       window.removeEventListener("beforeunload", handleBeforeUnload);
       window.removeEventListener("popstate", handlePopState);
     };
-  }, [subject, content, selectedCategories, type, pollOptions]);
+  }, []); // Empty dependency array - only runs once
 
   const handleBackClick = () => {
-    if (hasUnsavedContent()) {
+    if (hasUnsavedContentRef.current) {
       setShowExitConfirm(true);
     } else {
       handleSmoothExit();
     }
   };
+
 
   const handleSmoothExit = () => {
     setIsExiting(true);
@@ -434,12 +419,18 @@ const CreatePage = () => {
   };
 
   useEffect(() => {
-    window.handleCreatePageBack = handleBackClick;
+    window.handleCreatePageBack = () => {
+      if (hasUnsavedContentRef.current) {
+        setShowExitConfirm(true);
+      } else {
+        handleSmoothExit();
+      }
+    };
 
     return () => {
       delete window.handleCreatePageBack;
     };
-  }, [subject, content, selectedCategories, type, pollOptions]);
+  }, []); // Changed to empty array!
 
   const handleConfirmExit = () => {
     setShowExitConfirm(false);
@@ -466,11 +457,34 @@ const CreatePage = () => {
     );
   };
 
+
+
+
+
+
+  const POLL_OPTION_MAX_CHARS = 40;
+  const LINE_HEIGHT = 22; // Base line height in pixels
+  const TOTAL_HEIGHT = LINE_HEIGHT * 2; // Height for 2 lines
+
   const handlePollOptionChange = (value, index) => {
+    // console.log("handlePollOptionChange called with:", JSON.stringify(value));
+
+    let lines = value.split("\n");
+    console.log("Initial lines count:", lines.length, lines);
+
+    lines = lines.slice(0, 2).filter(line => line.length > 0);
+    console.log("After filtering:", lines.length, lines);
+
+    const formattedValue = lines.join("\n");
+    console.log("Final formatted value:", JSON.stringify(formattedValue));
+
     const updated = [...pollOptions];
-    updated[index] = value;
+    updated[index] = formattedValue;
+    // console.log("Updated pollOptions:", updated);
+
     setPollOptions(updated);
   };
+
 
   const addPollOption = () => {
     if (pollOptions.length < 4) {
@@ -883,19 +897,14 @@ const CreatePage = () => {
                       minHeight: "40px",
                       maxHeight: "120px",
                       lineHeight: "1.5",
-                      WebkitAppearance: "none",
-                      WebkitUserSelect: "text",
-                      WebkitTouchCallout: "none",
-                      WebkitOverflowScrolling: "touch",
-                      touchAction: "manipulation", // Changed from pan-y
                       overflowY: "auto",
                       wordWrap: "break-word",
                       whiteSpace: "pre-wrap",
                     }}
                     rows={1}
                     autoComplete="off"
-                    autoCorrect="on" // Changed to "on" for better iOS experience
-                    spellCheck="true" // Changed to "true"
+                    autoCorrect="off"
+                    spellCheck="false"
                     autoCapitalize="sentences"
                   />
                 </div>
@@ -951,32 +960,55 @@ const CreatePage = () => {
                       return (
                         <div
                           key={index}
-                          className="relative w-[260px] md:w-[400px]"
+                          className="relative w-[295px] md:w-[400px]"
                         >
-                          <div className="flex items-center bg-gray-200 opacity-75 rounded-4xl gap-2 px-6 w-full min-h-[44px]">
+                          <div className="flex items-center bg-gray-200 opacity-75 rounded-4xl gap-2 px-6 w-full min-h-[44px] overflow-hidden">
+
                             <textarea
                               value={option}
                               onChange={(e) => {
-                                const text = e.target.value;
-                                const MAX_CHARS = 40;
-                                if (text.length <= MAX_CHARS) {
-                                  handlePollOptionChange(text, index);
-                                  const textarea = e.target;
-                                  textarea.style.height = "auto";
-                                  textarea.style.height = Math.min(textarea.scrollHeight, 64) + "px";
-                                }
+                                const raw = String(e.target.value || "");
+                                const noNewlines = raw.replace(/\r/g, "").replace(/\n/g, "");
+                                const capped = noNewlines.slice(0, 50); // total = 25 * 2 lines
+
+                                // split into two lines of 25 chars each
+                                const first = capped.slice(0, 25);
+                                const second = capped.length > 25 ? capped.slice(25) : "";
+                                const formatted = second ? `${first}\n${second}` : first;
+
+                                console.log("first.length:", first.length, "second.length:", second.length);
+                                console.log("formatted:", JSON.stringify(formatted));
+
+                                handlePollOptionChange(formatted, index);
+                              }}
+                              onPaste={(e) => {
+                                e.preventDefault();
+                                const pasted = (e.clipboardData || window.clipboardData).getData("text");
+                                const cleaned = pasted.replace(/\r/g, "").replace(/\n/g, "").slice(0, 50);
+                                const formatted =
+                                  cleaned.length > 25
+                                    ? `${cleaned.slice(0, 25)}\n${cleaned.slice(25)}`
+                                    : cleaned;
+                                handlePollOptionChange(formatted, index);
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") e.preventDefault();
                               }}
                               placeholder={`Option ${index + 1}`}
-                              className="flex-grow px-1 md:px-4 py-2 rounded-lg text-center focus:ring-0 focus:outline-none bg-transparent resize-none leading-snug font-mono"
+                              className="w-full px-2 py-2 text-center bg-transparent focus:outline-none resize-none overflow-hidden"
+                              rows={2}
+                              maxLength={50}
+                              spellCheck="false"
                               style={{
-                                minHeight: "44px",
-                                maxHeight: "64px",
-                                lineHeight: "1.4",
+                                height: "44px",
+                                lineHeight: "22px",
+                                whiteSpace: "pre",
                                 overflow: "hidden",
-                                wordBreak: "break-all",
-                                whiteSpace: "pre-wrap",
+                                resize: "none",
+                                textAlign: "center",
                               }}
                             />
+
 
 
 

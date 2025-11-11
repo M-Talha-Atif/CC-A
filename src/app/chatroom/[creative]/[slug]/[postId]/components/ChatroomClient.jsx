@@ -2,22 +2,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
-  ArrowLeft,
-  Users,
-  Clock,
-  Settings,
-  Volume2,
-  VolumeX,
-  Heart,
-  Bookmark,
-  Share2,
-  Info,
   MessageCircle,
-  Send,
-  X,
-  Reply,
-  ChevronDown,
-  ChevronUp,
 } from "lucide-react";
 import {
   createComment,
@@ -33,19 +18,17 @@ import {
   searchUsersForMentions,
   updateComment,
   votePoll,
-} from "../../../../../../../action.js";
+} from "@root/action.js";
 import { toast, Toaster } from "sonner";
-import ChatMessage from "../../../../../(protected)/feed/chatroom/components/ChatMessage.jsx";
-import ChatInput from "../../../../../(protected)/feed/chatroom/components/ChatInput.jsx";
-import useUserStore from "../../../../../../store/userStore.js";
+import ChatMessage from "@/app/(protected)/feed/chatroom/components/ChatMessage.jsx";
+import ChatInput from "@/app/(protected)/feed/chatroom/components/ChatInput.jsx";
+import useUserStore from "@/store/userStore.js";
 import SharePreview from "@/app/(protected)/feed/components/SharePreview.jsx";
 import {
   getTimeAgo,
   LinkifyText,
   ThresholdCountdown,
 } from "@/app/(protected)/feed/components/Post.jsx";
-import ChatroomTimer from "../../../../../(protected)/feed/chatroom/components/ChatroomTimer.jsx";
-
 import QuoteNewIcon from "@/components/QuoteNewIcon";
 import ShareIcon from "@/components/ShareIcon";
 import ChatIcon from "@/components/ChatIcon";
@@ -1049,7 +1032,7 @@ const ChatroomClient = () => {
       } else {
         // General error
         if (isCurrentlyLiked) {
-          toast.error("Failed to unlike post.");
+          toast.error("Action not permitted.");
         } else {
           toast.error("Failed to like post.");
         }

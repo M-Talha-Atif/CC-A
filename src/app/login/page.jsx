@@ -523,20 +523,6 @@ const page = () => {
     }
   };
 
-  // const steps = [
-  //   "landing",
-  //   "email-choice",
-  //   "login-choice",
-  //   "email-login",
-  //   "email-verification",
-  //   "phone-number",
-  //   "referral-code",
-  //   "business-name",
-  //   "business-website",
-  //   "business-instagram",
-  //   "creative-domain",
-  // ];
-
   const steps = [
     // "landing",
     "email-choice",
@@ -634,7 +620,7 @@ const page = () => {
         if (response.success && !response.exists) {
           setEmailValidation({
             isValid: false,
-            message: "Please sign up first.",
+            message: "Please sign up.",
             type: "error",
           });
           return;
@@ -890,6 +876,7 @@ const page = () => {
 
       setEmailTypingTimer(newTimer);
     } else if (field === "password") {
+
       // Hide error while typing
       setShowPasswordError(false);
 
@@ -928,29 +915,6 @@ const page = () => {
     }
   };
 
-   const handleInputPasswordChange = (field, value) => {
-
-    setFormData((prev) => ({ ...prev, [field]: value })); // <-- THIS FIXES THE UI
-
-    // Validation logic with debounce
-   if (field === "password") {
-      // Hide error while typing
-      setShowPasswordError(false);
-
-      // Clear existing timer
-      if (passwordTypingTimer) {
-        clearTimeout(passwordTypingTimer);
-      }
-
-      // Set new timer
-      const newTimer = setTimeout(() => {
-        validatePassword(value);
-        // setShowPasswordError(true);
-      }, 800);
-
-      setPasswordTypingTimer(newTimer);
-    } 
-  };
 
   const goToNextStep = async (stepCompleted = null) => {
     const currentIndex = steps.indexOf(currentStep);
@@ -1355,29 +1319,6 @@ const page = () => {
           setLoadingMessage("");
         }
         break;
-
-      // case "business-name":
-      //   if (formData.businessName.trim()) {
-      //     await updateServerProgress(
-      //       currentStep,
-      //       {
-      //         businessName: formData.businessName,
-      //       },
-      //       "business-name"
-      //     );
-
-      //     // Update local user state
-      //     setUser((prev) => ({
-      //       ...prev,
-      //       profile: {
-      //         ...prev.profile,
-      //         businessName: formData.businessName,
-      //       },
-      //     }));
-
-      //     await goToNextStep("business-name");
-      //   }
-      //   break;
 
       case "business-website":
         if (websiteValidation.isValid) {
@@ -1842,7 +1783,7 @@ const page = () => {
                 You acknowledge that you understand and agree to the{" "}
                 <span
                   onClick={() => openHelpCenter("terms")}
-                  className="italic underline"
+                  className="underline"
                 >
                   {" "}
                   Terms
@@ -1850,7 +1791,7 @@ const page = () => {
                 and{" "}
                 <span
                   onClick={() => openHelpCenter("privacy")}
-                  className="italic underline"
+                  className="underline"
                 >
                   Policy
                 </span>
@@ -1912,7 +1853,7 @@ const page = () => {
                       type={showPassword ? "text" : "password"}
                       value={formData.password}
                       onChange={(e) =>
-                        handleInputPasswordChange("password", e.target.value)
+                        handleInputChange("password", e.target.value)
                       }
                       disabled={isLoading}
                       className={`w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent ${isLoading ? "bg-gray-100 cursor-not-allowed" : ""
@@ -2034,7 +1975,7 @@ const page = () => {
                 You acknowledge that you understand and agree to the{" "}
                 <span
                   onClick={() => openHelpCenter("terms")}
-                  className="italic underline"
+                  className="underline"
                 >
                   {" "}
                   Terms
@@ -2042,7 +1983,7 @@ const page = () => {
                 and{" "}
                 <span
                   onClick={() => openHelpCenter("privacy")}
-                  className="italic underline"
+                  className="underline"
                 >
                   Policy
                 </span>
@@ -2091,7 +2032,7 @@ const page = () => {
                 You acknowledge that you understand and agree to the{" "}
                 <span
                   onClick={() => openHelpCenter("terms")}
-                  className="italic underline"
+                  className="underline"
                 >
                   {" "}
                   Terms
@@ -2099,7 +2040,7 @@ const page = () => {
                 and{" "}
                 <span
                   onClick={() => openHelpCenter("privacy")}
-                  className="italic underline"
+                  className="underline"
                 >
                   Policy
                 </span>
@@ -2245,8 +2186,8 @@ const page = () => {
               />
               <p className="text-[10px] [@media(min-width:360px)]:text-[10px] text-gray-600 whitespace-nowrap">
                 This is required to access main features, See{" "}
-                <span className="italic underline" onClick={() => openHelpCenter("terms")}>Terms</span> and{" "}
-                <span className="italic underline" onClick={() => openHelpCenter("privacy")}>Policy</span> for details.
+                <span className="underline" onClick={() => openHelpCenter("terms")}>Terms</span> and{" "}
+                <span className="underline" onClick={() => openHelpCenter("privacy")}>Policy</span> for details.
               </p>
 
             </form>

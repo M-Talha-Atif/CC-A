@@ -15,14 +15,25 @@ export function ScrollVisibilityProvider({ children }) {
 
   const updateScrollDirection = useCallback(() => {
     const scrollY = window.scrollY;
-    
-    console.log('🔄 updateScrollDirection called', { 
-      scrollY, 
-      lastScrollY: lastScrollY.current, 
-      hasInitialized: hasInitialized.current 
+    const scrollHeight = document.documentElement.scrollHeight;
+    const clientHeight = document.documentElement.clientHeight;
+
+    // Check if we're at the bottom of the page
+    // const isAtBottom = scrollY + clientHeight >= scrollHeight - 100; // 100px threshold
+
+    const bottomThreshold = Math.max(100, window.innerHeight * 0.1); // 10% of screen height or 100px min
+    const isAtBottom = scrollY + clientHeight >= scrollHeight - bottomThreshold;
+
+
+    console.log('🔄 updateScrollDirection called', {
+      scrollY,
+      lastScrollY: lastScrollY.current,
+      scrollHeight,
+      clientHeight,
+      isAtBottom
     });
 
-    // Always update isAtTop regardless of scroll change
+    // Always update isAtTop
     const newIsAtTop = scrollY < 50;
     setIsAtTop(newIsAtTop);
 
@@ -31,7 +42,6 @@ export function ScrollVisibilityProvider({ children }) {
       lastScrollY.current = scrollY;
       hasInitialized.current = true;
 
-      // If we're not at top on first load, hide headers
       if (scrollY > 50) {
         console.log('📄 Page loaded with scroll position > 50, hiding headers');
         setIsVisible(false);
@@ -42,12 +52,18 @@ export function ScrollVisibilityProvider({ children }) {
       return;
     }
 
-    // CRITICAL FIX: Always update visibility when at top or not
-    // Remove the "scroll change too small" check for visibility updates
-    if (scrollY < lastScrollY.current || scrollY < 50) {
+    // CRITICAL FIX: Don't show header when at bottom of page
+    if (isAtBottom && lastScrollY.current > 0) {
+      console.log('🔚 At bottom of page → visible: false');
+      setIsVisible(false);
+    }
+    // Show header when scrolling up or near top
+    else if (scrollY < lastScrollY.current || scrollY < 50) {
       console.log('👆 Scrolling up or near top → visible: true');
       setIsVisible(true);
-    } else if (scrollY > lastScrollY.current && scrollY > 50) {
+    }
+    // Hide header when scrolling down and not near top
+    else if (scrollY > lastScrollY.current && scrollY > 50) {
       console.log('👇 Scrolling down and not near top → visible: false');
       setIsVisible(false);
     }
@@ -86,24 +102,24 @@ export function ScrollVisibilityProvider({ children }) {
     };
   }, [onScroll, updateScrollDirection]);
 
-  // ADD THIS: Force scroll check on route changes
+  // Force scroll check on route changes
   useEffect(() => {
     console.log('📍 Route changed:', pathname);
-    
+
     // Reset initialization to force fresh check on route change
     hasInitialized.current = false;
-    
+
     // Force scroll check after route change
     const timer = setTimeout(() => {
       console.log('🔄 Forcing scroll check after route change');
       updateScrollDirection();
-      
+
       // Also trigger multiple scroll events to ensure detection
       window.dispatchEvent(new Event('scroll'));
       setTimeout(() => window.dispatchEvent(new Event('scroll')), 50);
       setTimeout(() => window.dispatchEvent(new Event('scroll')), 100);
     }, 150);
-    
+
     return () => clearTimeout(timer);
   }, [pathname, updateScrollDirection]);
 

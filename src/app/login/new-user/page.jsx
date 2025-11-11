@@ -73,7 +73,7 @@ const NewUserPage = () => {
             className="quote-logo-crisp absolute -top-6 -left-2"
           />
         </div>
-        <div className="w-full max-w-md space-y-0">
+        <div className="w-full max-w-md space-y-0 mt-8">
           <h1 className="text-2xl font-semibold text-gray-900">
             Welcome to CUNO COVO
           </h1>
@@ -91,32 +91,39 @@ const NewUserPage = () => {
               </div>
             </div>
 
-            <div className="text-sm text-gray-800 leading-relaxed space-y-2">
+            <div className="text-sm text-gray-800 leading-relaxed space-y-8">
               <p>
-                CUNO COVO (part 1) is a place for wedding Creatives to cut
+                CUNO COVO is a platform for wedding Creatives to cut
                 through the noise, and say what needs to be said with
-                intention—anonymously.
-              </p>
-              <p className="font-semibold text-center mb-2">
-                Raw Voices.....Real Talk
-              </p>
-              <p className="text-gray-600 italic text-xs">
-                Part 2 (coming soon) will align Couples seeking Creatives for
+                intention anonymously. And will align Couples seeking Creatives for
                 their wedding event(s).
               </p>
+
+              <div className=" mt-2">
+
+                <p className="font-bold">
+                  Valuing privacy and authenticity
+                </p>
+                <p className="font-bold">
+                  A new way to align with couples
+                </p>
+              </div>
+
+        
             </div>
           </div>
 
-          <div className="flex justify-start">
+          <div className="flex justify-start ml-6">
             <button
               onClick={handleJoinUs}
-              className="py-2 px-8 border-2 border-black text-black rounded-full font-medium hover:bg-black hover:text-white transition-colors duration-300"
+              className="py-1 px-5 border border-black text-black rounded-full text-sm font-medium hover:bg-black hover:text-white transition-colors duration-300"
             >
               Join us
             </button>
           </div>
 
-          <div className="pt-4  space-y-8 font-semibold  text-sm text-left">
+
+          <div className="pt-4 mt-12 space-y-8 font-semibold  text-sm text-left">
             <button
               // onClick={() => router.push("/help-center?tab=faq")}
               onClick={() => openHelpCenter("faq")}
@@ -125,24 +132,24 @@ const NewUserPage = () => {
               Frequently Asked Question
             </button>
             <button
-            onClick={() => openHelpCenter("guidelines")}
+              onClick={() => openHelpCenter("guidelines")}
               // onClick={() => router.push("/help-center?tab=guidelines")}
               className="block w-full text-left text-gray-700 hover:text-gray-900"
             >
               Community Guidelines
             </button>
             <button
-            onClick={() => openHelpCenter("terms")}
+              onClick={() => openHelpCenter("terms")}
               // onClick={() => router.push("/help-center?tab=terms")}
               className="block w-full text-left text-gray-700 hover:text-gray-900"
             >
               Terms & Privacy
             </button>
-    
+
 
           </div>
         </div>
-        <p className="text-[10px] text-gray-500 pt-4 leading-relaxed">
+        <p className="text-[10px] text-gray-500 pt-4 leading-relaxed mb-4">
           Disclaimer: This email (including attachments) is not confidential and
           intended for public information. You haven't received it by mistake.
           Any unauthorized disclosure or distribution is prohibited. The views

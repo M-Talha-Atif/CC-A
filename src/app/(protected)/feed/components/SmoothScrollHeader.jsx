@@ -16,9 +16,13 @@ const SmoothScrollHeader = ({
   setIsFilterOpen,
   clearSearch,
   singlePostMode = false,
-  creativesSubFilter = "all",
+  creativesSubFilter = "all"
 }) => {
   const { isVisible, isAtTop } = useScrollVisibility();
+
+  // // Override visibility when no posts
+  // const isVisible = postsLength === 0 ? true : originalIsVisible;
+  // const isAtTop = posts.length === 0 ? true : originalIsAtTop;
 
   const getFilterIcon = () => {
     const iconMap = {

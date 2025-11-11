@@ -24,14 +24,7 @@ const processQueue = (error, token = null) => {
 
 // Response interceptor
 axiosInstance.interceptors.response.use(
-  (response) => {
-    // If response contains new tokens, they're already set as cookies by the server
-    // But for mobile, also check the response body
-    if (response.data?.data?.accessToken) {
-      console.log("✅ New tokens received in response");
-    }
-    return response;
-  },
+  (response) => response,
   async (error) => {
     const originalRequest = error.config;
 
@@ -48,28 +41,67 @@ axiosInstance.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        const response = await axiosInstance.post("api/auth/refresh-token");
-
-        // ✅ Check if tokens were returned in body (fallback for mobile)
-        if (response.data?.data?.accessToken) {
-          console.log("✅ Tokens refreshed successfully");
-        }
-
+        // Try cookie-based refresh first
+        const response = await axiosInstance.post("/api/auth/refresh-token");
+        
+        console.log("✅ Token refresh response:", response.data);
         processQueue(null, true);
         isRefreshing = false;
 
         return axiosInstance(originalRequest);
       } catch (refreshError) {
-        console.error("❌ Refresh failed:", refreshError);
+        console.error("❌ Cookie refresh failed, trying fallback:", refreshError);
+        
+        // Fallback: Check localStorage for refresh token
+        if (typeof window !== "undefined") {
+          const fallbackRefreshToken = localStorage.getItem('refreshToken');
+          
+          if (fallbackRefreshToken) {
+            try {
+              console.log("🔄 Attempting fallback refresh...");
+              const fallbackResponse = await axios.post(
+                `${process.env.NEXT_PUBLIC_BASE_URL}api/auth/refresh-token`,
+                { refreshToken: fallbackRefreshToken },
+                {
+                  headers: {
+                    "Content-Type": "application/json",
+                  },
+                  withCredentials: false // Don't use cookies for fallback
+                }
+              );
+
+              if (fallbackResponse.data?.data?.accessToken) {
+                // Store new tokens
+                localStorage.setItem('accessToken', fallbackResponse.data.data.accessToken);
+                localStorage.setItem('refreshToken', fallbackResponse.data.data.refreshToken);
+                
+                // Update current request header
+                originalRequest.headers.Authorization = `Bearer ${fallbackResponse.data.data.accessToken}`;
+                
+                processQueue(null, true);
+                isRefreshing = false;
+                return axiosInstance(originalRequest);
+              }
+            } catch (fallbackError) {
+              console.error("❌ Fallback refresh also failed:", fallbackError);
+            }
+          }
+        }
+
+        // All refresh attempts failed
+        console.error("❌ All refresh attempts failed");
         processQueue(refreshError, null);
         isRefreshing = false;
 
         if (typeof window !== "undefined") {
-          // Clear any cached data
+          // Clear all auth data
+          localStorage.removeItem('accessToken');
+          localStorage.removeItem('refreshToken');
           sessionStorage.removeItem("user_cache");
           sessionStorage.removeItem("last_refresh");
-          window.location.href =
-            "/login?flow=creative&step=login-choice&mode=login";
+          
+          // Redirect to login
+          window.location.href = "/login?flow=creative&step=login-choice&mode=login";
         }
 
         return Promise.reject(refreshError);

@@ -48,81 +48,19 @@ const useUserStore = create(
 
       // Token refresh logic (unchanged)
       refreshToken: async () => {
-        const state = get();
 
-        // Prevent multiple simultaneous refresh attempts
-        if (state.isTokenRefreshing) {
-          return {
-            success: false,
-            message: "Token refresh already in progress",
-          };
-        }
-
-        // Check if we recently refreshed (within last 5 minutes)
+        // Just update the timestamp since axios interceptor handles the actual refresh
         const now = Date.now();
-        if (
-          state.lastTokenRefresh &&
-          now - state.lastTokenRefresh < 5 * 60 * 1000
-        ) {
-          return { success: true, message: "Token recently refreshed" };
-        }
 
-        set({ isTokenRefreshing: true });
+        set({
+          lastTokenRefresh: now,
+          isAuthenticated: true, // Assume success since interceptor will handle failures
+        });
 
-        try {
-          const result = await refreshUserToken();
-
-          if (result.success) {
-            set({
-              isAuthenticated: true,
-              isTokenRefreshing: false,
-              lastTokenRefresh: now,
-            });
-
-            // Update user data if available
-            if (result.data?.user) {
-              set((state) => ({
-                user: { ...state.user, ...result.data.user },
-              }));
-            }
-
-            return result;
-          } else {
-            // Token refresh failed, clear user
-            set({
-              user: {
-                rank: null,
-                referralCode: null,
-              },
-              isAuthenticated: false,
-              currentFeedCategory: "couples",
-              isTokenRefreshing: false,
-              lastTokenRefresh: null,
-              isLoggingOut: false, // Reset logout state
-            });
-
-            return result;
-          }
-        } catch (error) {
-          console.error("Token refresh error in store:", error);
-
-          set({
-            user: {
-              rank: null,
-              referralCode: null,
-            },
-            isAuthenticated: false,
-            currentFeedCategory: "couples",
-            isTokenRefreshing: false,
-            lastTokenRefresh: null,
-            isLoggingOut: false, // Reset logout state
-          });
-
-          return {
-            success: false,
-            message: "Token refresh failed",
-          };
-        }
+        return {
+          success: true,
+          message: "Token refresh handled by interceptor",
+        };
       },
 
       // Initialize authentication state (unchanged)

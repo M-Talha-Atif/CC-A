@@ -2,145 +2,108 @@
 
 import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import axiosInstance from "@/utils/axiosInstance"; // ✅ Use configured instance
+import axiosInstance from "@/utils/axiosInstance";
 import useUserStore from "@/store/userStore";
 
 export default function SessionManager({ children }) {
   const router = useRouter();
   const { setUser, clearUser, isAuthenticated } = useUserStore();
+
   const refreshTimerRef = useRef(null);
+  const isRefreshingRef = useRef(false);
   const hasCheckedSession = useRef(false);
 
+  const REFRESH_INTERVAL = 30 * 60 * 1000; // 30 minutes
+  const CACHE_MAX_AGE = 6 * 24 * 60 * 60 * 1000; // 6 days
+
+  // Single refresh function
   const refreshToken = async () => {
+    if (isRefreshingRef.current) return false;
+    isRefreshingRef.current = true;
+
     try {
       const { isLoggingOut } = useUserStore.getState();
-      if (isLoggingOut) {
-        console.log("🚫 Logout in progress, skipping refresh");
-        return false;
-      }
+      if (isLoggingOut) return false;
 
-      console.log("🔄 Attempting token refresh...");
+      console.log("🔄 Refreshing token...");
 
-      const { data } = await axiosInstance.post(
-        "api/auth/refresh-token",
-        {},
-        {
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
-      );
-
-      console.log("📦 Refresh response:", data);
+      const { data } = await axiosInstance.post("/api/auth/refresh-token");
 
       if (data.success && data.data?.user) {
         console.log("✅ Token refreshed successfully");
         setUser(data.data.user);
-
         sessionStorage.setItem("user_cache", JSON.stringify(data.data.user));
         sessionStorage.setItem("last_refresh", Date.now().toString());
-
         return true;
-      } else {
-        console.log("⚠️ Refresh response missing user data");
-        return false;
       }
-    } catch (error) {
-      console.error(
-        "❌ Token refresh failed:",
-        error.response?.data || error.message
-      );
 
-      // Clear cache on failed refresh
+      console.warn("⚠️ Refresh response missing user data");
+      return false;
+    } catch (error) {
+      console.error("❌ Token refresh failed:", error.response?.data || error.message);
       sessionStorage.removeItem("user_cache");
       sessionStorage.removeItem("last_refresh");
-
       return false;
+    } finally {
+      isRefreshingRef.current = false;
     }
   };
 
+  // Initial session check
   useEffect(() => {
-    const checkAndRefreshSession = async () => {
-      if (hasCheckedSession.current) return;
-      hasCheckedSession.current = true;
+    if (hasCheckedSession.current) return;
+    hasCheckedSession.current = true;
 
-      console.log("🔍 Initial session check...");
-
-      // Try to refresh token on mount
+    const checkSession = async () => {
       const refreshed = await refreshToken();
 
       if (!refreshed) {
-        // 🔥 CHECK CACHE BEFORE LOGGING OUT
         const cachedUser = sessionStorage.getItem("user_cache");
         const lastRefresh = sessionStorage.getItem("last_refresh");
 
-        // If cache exists and is less than 6 days old, restore session
         if (cachedUser && lastRefresh) {
           const cacheAge = Date.now() - parseInt(lastRefresh);
-          const sixDays = 6 * 24 * 60 * 60 * 1000;
-
-          if (cacheAge < sixDays) {
+          if (cacheAge < CACHE_MAX_AGE) {
             console.log("✅ Restored session from cache");
             setUser(JSON.parse(cachedUser));
-            // Try to refresh in background
-            refreshToken();
+            refreshToken(); // refresh in background
             return;
           }
         }
 
-        console.log("❌ No valid session found");
+        console.log("❌ No valid session found, logging out");
         sessionStorage.removeItem("user_cache");
         sessionStorage.removeItem("last_refresh");
         clearUser();
+        router.push("/login?flow=creative&step=login-choice&mode=login");
       }
     };
 
-    checkAndRefreshSession();
-  }, [setUser, clearUser]);
+    checkSession();
+  }, [setUser, clearUser, router]);
 
-  // 🔥 Proactive token refresh - Every 5 minutes (more aggressive)
+  // Proactive refresh timer
   useEffect(() => {
-    if (!isAuthenticated) {
-      console.log("⏸️ Not authenticated, skipping refresh timer");
-      return;
-    }
+    if (!isAuthenticated) return;
 
-    console.log("⏰ Starting refresh timer (5 min intervals)");
-
-    const startRefreshTimer = () => {
-      refreshTimerRef.current = setInterval(
-        async () => {
-          console.log("⏰ Proactive refresh triggered");
-          const refreshed = await refreshToken();
-
-          if (!refreshed) {
-            clearUser();
-            sessionStorage.removeItem("user_cache");
-            sessionStorage.removeItem("last_refresh");
-            router.push("/login?flow=creative&step=login-choice&mode=login");
-          }
-        },
-        5 * 60 * 1000 // 🔥 5 minutes
-      );
-    };
-
-    startRefreshTimer();
+    console.log(`⏰ Starting refresh timer (${REFRESH_INTERVAL / 60000} min intervals)`);
+    refreshTimerRef.current = setInterval(refreshToken, REFRESH_INTERVAL);
 
     return () => {
-      if (refreshTimerRef.current) {
-        console.log("🛑 Clearing refresh timer");
-        clearInterval(refreshTimerRef.current);
-      }
+      if (refreshTimerRef.current) clearInterval(refreshTimerRef.current);
     };
-  }, [isAuthenticated, clearUser, router]);
+  }, [isAuthenticated]);
 
+  // Visibility change handler
   useEffect(() => {
     const handleVisibilityChange = async () => {
-      // Don't refresh during logout
-      const { isLoggingOut } = useUserStore.getState();
+      if (document.visibilityState !== "visible") return;
 
-      if (document.visibilityState === "visible" && !isLoggingOut) {
-        console.log("👀 Tab became visible, refreshing token");
+      const lastRefresh = sessionStorage.getItem("last_refresh");
+      const now = Date.now();
+
+      if (!lastRefresh || now - parseInt(lastRefresh) > REFRESH_INTERVAL) {
+        console.log("👀 Tab visible, refreshing token");
         const refreshed = await refreshToken();
 
         if (!refreshed) {
@@ -150,24 +113,23 @@ export default function SessionManager({ children }) {
             refreshToken();
           } else {
             clearUser();
+            router.push("/login?flow=creative&step=login-choice&mode=login");
           }
         }
       }
     };
 
     document.addEventListener("visibilitychange", handleVisibilityChange);
-    return () =>
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-  }, [setUser, clearUser]);
+    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+  }, [setUser, clearUser, router]);
 
-  // 🔥 NEW: Handle beforeunload to ensure cache is updated
+  // Update cache before unload
   useEffect(() => {
     const handleBeforeUnload = () => {
       if (isAuthenticated) {
         sessionStorage.setItem("last_refresh", Date.now().toString());
       }
     };
-
     window.addEventListener("beforeunload", handleBeforeUnload);
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [isAuthenticated]);

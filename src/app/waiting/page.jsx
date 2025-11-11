@@ -183,14 +183,14 @@ const Page = () => {
             You acknowledge that you understand and agree to the{" "}
             <span
               onClick={() => openHelpCenter("terms")}
-              className="italic underline"
+              className="underline"
             >
               Terms
             </span>{" "}
             and{" "}
             <span
               onClick={() => openHelpCenter("privacy")}
-              className="italic underline"
+              className="underline"
             >
               Policy
             </span>
