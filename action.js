@@ -120,91 +120,132 @@ export const refreshTokenServer = async () => {
 // ==========================================
 
 
-/**
- * Make authenticated server-side request with automatic retry on 401
- */
+// /**
+//  * Make authenticated server-side request with automatic retry on 401
+//  */
+// const makeAuthenticatedRequest = async (url, options = {}) => {
+//   const cookieStore = await cookies();
+//   try {
+//     const response = await axiosInstance({
+//       url,
+//       method: options.method || "GET",
+//       data: options.data || {},
+//       headers: {
+//         Cookie: cookieStore.toString(),
+//         "Content-Type": "application/json",
+//         ...options.headers,
+//       },
+//       timeout: 30000,
+//       withCredentials: true,
+//       ...options,
+//     });
+//     return { success: true, data: response.data };
+//   } catch (error) {
+//     // If token expired, retry after refresh
+//     if (error.response?.status === 401 && !options.skipRefresh) {
+//       console.log("Token expired, attempting refresh...");
+
+//       const refreshResult = await refreshTokenServer?.();
+//       if (refreshResult?.success) {
+//         try {
+//           const retryResponse = await axiosInstance({
+//             url,
+//             method: options.method || "GET",
+//             data: options.data || {},
+//             headers: {
+//               Cookie: (await cookies()).toString(),
+//               "Content-Type": "application/json",
+//               ...options.headers,
+//             },
+//             timeout: 30000,
+//             withCredentials: true,
+//             ...options,
+//             skipRefresh: true,
+//           });
+//           return { success: true, data: retryResponse.data };
+//         } catch (retryError) {
+//           throw retryError;
+//         }
+//       } else {
+//         throw error;
+//       }
+//     } else {
+//       throw error;
+//     }
+//   }
+// };
+
+
 const makeAuthenticatedRequest = async (url, options = {}) => {
   const cookieStore = await cookies();
-  try {
-    const response = await axiosInstance({
+
+  const sendRequest = async (accessToken) => {
+    const headers  = {
+      "Content-Type": "application/json",
+      ...options.headers,
+    };
+
+    if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
+
+    // Attach cookies for server-side requests
+    headers.Cookie = cookieStore.toString();
+
+    return axiosInstance({
       url,
       method: options.method || "GET",
       data: options.data || {},
-      headers: {
-        Cookie: cookieStore.toString(),
-        "Content-Type": "application/json",
-        ...options.headers,
-      },
+      headers,
       timeout: 30000,
       withCredentials: true,
       ...options,
     });
+  };
+
+  try {
+    const response = await sendRequest();
     return { success: true, data: response.data };
   } catch (error) {
-    // If token expired, retry after refresh
-    if (error.response?.status === 401 && !options.skipRefresh) {
+    // Retry on 401
+    if (error.response?.status === 401 && !options._retry) {
       console.log("Token expired, attempting refresh...");
 
-      const refreshResult = await refreshTokenServer?.();
-      if (refreshResult?.success) {
-        try {
-          const retryResponse = await axiosInstance({
-            url,
-            method: options.method || "GET",
-            data: options.data || {},
-            headers: {
-              Cookie: (await cookies()).toString(),
-              "Content-Type": "application/json",
-              ...options.headers,
-            },
-            timeout: 30000,
-            withCredentials: true,
-            ...options,
-            skipRefresh: true,
-          });
-          return { success: true, data: retryResponse.data };
-        } catch (retryError) {
-          throw retryError;
-        }
-      } else {
-        throw error;
+      const refreshResult = await refreshTokenServer();
+      if (refreshResult?.success && refreshResult.data?.accessToken) {
+        options._retry = true;
+        const retryResponse = await sendRequest(refreshResult.data.accessToken);
+        return { success: true, data: retryResponse.data };
       }
-    } else {
-      throw error;
     }
+
+    // If still failing, throw error
+    throw error;
   }
 };
 
 
 export const login = async ({ email, password }) => {
   try {
-       const response = await axios.post(
+    const response = await axios.post(
       `${process.env.NEXT_PUBLIC_BASE_URL}api/auth/login`,
       { email, password },
       {
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         withCredentials: true,
       }
     );
 
-    console.log(response.data.data)
-    
-    // Check if tokens are in response body (for mobile/fallback)
-    const { accessToken, refreshToken } = response.data.data;
+    const { accessToken, refreshToken, user } = response.data.data;
 
-    // If tokens are in response body, set them in localStorage as fallback
-    if (typeof window !== "undefined" && accessToken && refreshToken) {
-      localStorage.setItem('accessToken', accessToken);
-      localStorage.setItem('refreshToken', refreshToken);
-      console.log(" Tokens stored in localStorage as fallback");
+    if (accessToken && refreshToken) {
+      localStorage.setItem("accessToken", accessToken);
+      localStorage.setItem("refreshToken", refreshToken);
+      console.log("✅ Tokens stored in localStorage");
     }
 
     return {
       success: true,
-      data: data.data,
-      message: data.message || "Login successful",
+      data: response.data.data,
+      message: response.data.message || "Login successful",
     };
   } catch (error) {
     return {
@@ -213,6 +254,43 @@ export const login = async ({ email, password }) => {
     };
   }
 };
+// export const login = async ({ email, password }) => {
+//   try {
+//        const response = await axios.post(
+//       `${process.env.NEXT_PUBLIC_BASE_URL}api/auth/login`,
+//       { email, password },
+//       {
+//         headers: {
+//           "Content-Type": "application/json",
+//         },
+//         withCredentials: true,
+//       }
+//     );
+
+//     console.log(response.data.data)
+
+//     // Check if tokens are in response body (for mobile/fallback)
+//     const { accessToken, refreshToken } = response.data.data;
+
+//     // If tokens are in response body, set them in localStorage as fallback
+//     if (typeof window !== "undefined" && accessToken && refreshToken) {
+//       localStorage.setItem('accessToken', accessToken);
+//       localStorage.setItem('refreshToken', refreshToken);
+//       console.log(" Tokens stored in localStorage as fallback");
+//     }
+
+//     return {
+//       success: true,
+//       data: data.data,
+//       message: data.message || "Login successful",
+//     };
+//   } catch (error) {
+//     return {
+//       success: false,
+//       message: error.response?.data?.message || "Login failed",
+//     };
+//   }
+// };
 
 export const logout = async () => {
   try {
@@ -243,6 +321,15 @@ export const register = async ({ email, password, userType }) => {
     // Store cookies on server side
     if (data.success && data.data.accessToken && data.data.refreshToken) {
       const cookieStore = await cookies();
+      const accessToken = data.data.accessToken;
+      const refreshToken = data.data.refreshToken;
+
+      // ✅ Only run on client (browser)
+      if (typeof window !== "undefined" && accessToken && refreshToken) {
+        localStorage.setItem("accessToken", accessToken);
+        localStorage.setItem("refreshToken", refreshToken);
+        console.log("✅ Tokens stored in localStorage");
+      }
 
       cookieStore.set("token", data.data.accessToken, {
         httpOnly: false,
@@ -267,6 +354,7 @@ export const register = async ({ email, password, userType }) => {
       message: data.message || "Registration successful!",
     };
   } catch (error) {
+    console.log(error)
     return {
       success: false,
       message: error.response?.data?.message || "Registration failed",
@@ -1011,8 +1099,7 @@ export const getSavedPosts = async (query = {}) => {
   const queryString = new URLSearchParams(query).toString();
 
   const result = await makeAuthenticatedRequest(
-    `${process.env.NEXT_PUBLIC_BASE_URL}api/post/saved${
-      queryString ? `?${queryString}` : ""
+    `${process.env.NEXT_PUBLIC_BASE_URL}api/post/saved${queryString ? `?${queryString}` : ""
     }`,
     {
       method: "GET",
@@ -1666,7 +1753,7 @@ export const exchangeInstagramToken = async ({
 export const handleGoogleToken = async (accessToken) => {
   try {
     const cookieStore = await cookies();
-    cookieStore.set("token", accessToken);
+    // cookieStore.set("token", accessToken);
     return true;
   } catch (error) {
     return false;

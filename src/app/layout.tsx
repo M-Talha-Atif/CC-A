@@ -4,7 +4,6 @@ import { nunito } from "@/fonts/nunito";
 import "./globals.css";
 import { GoogleOAuthProvider } from "@react-oauth/google";
 import DesktopRestriction from "@/components/DesktopRestriction";
-import SessionManager from "@/components/SessionManager";
 import HelpCenter from "./(protected)/help-center/page";
 import { ScrollVisibilityProvider } from "@/hooks/useScrollVisibilityContext";
 
@@ -136,11 +135,9 @@ export default function RootLayout({
           clientId={`${process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID}`}
         >
           <DesktopRestriction>
-            <SessionManager>   {/* WRAP children with ScrollVisibilityProvider */}
               <ScrollVisibilityProvider>
                 {children}
               </ScrollVisibilityProvider>
-              </SessionManager>
             
             <div id="modal-root"></div>
             <HelpCenter />

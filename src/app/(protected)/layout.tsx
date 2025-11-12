@@ -112,29 +112,42 @@ const ProtectedLayout = ({
 
   // DETECT USER LOGOUT and trigger delay
   const prevUserRef = useRef(user);
+  // useEffect(() => {
+  //   const prevUser = prevUserRef.current;
+  //   const currentUser = user;
+
+  //   // If we had a user before and now we don't, it's a logout
+  //   if (
+  //     prevUser &&
+  //     (prevUser.id || prevUser.email) &&
+  //     (!currentUser || (!currentUser.id && !currentUser.email))
+  //   ) {
+  //     console.log("User logout detected, delaying layout change...");
+  //     setDelayLayoutChange(true);
+
+  //     // After 1.5 seconds, allow the layout to change
+  //     setTimeout(() => {
+  //       setDelayLayoutChange(false);
+  //     }, 1500);
+  //   }
+
+  //   prevUserRef.current = user;
+  // }, [user]);
+
   useEffect(() => {
-    const prevUser = prevUserRef.current;
-    const currentUser = user;
 
-    // If we had a user before and now we don't, it's a logout
-    if (
-      prevUser &&
-      (prevUser.id || prevUser.email) &&
-      (!currentUser || (!currentUser.id && !currentUser.email))
-    ) {
-      console.log("User logout detected, delaying layout change...");
+    if (!user?.id && !user?.email) {
+      console.log(user)
+      console.log("delay detected")
       setDelayLayoutChange(true);
-
-      // After 1.5 seconds, allow the layout to change
-      setTimeout(() => {
-        setDelayLayoutChange(false);
-      }, 1500);
+      const timeout = setTimeout(() => setDelayLayoutChange(false), 1500);
+      return () => clearTimeout(timeout);
     }
-
-    prevUserRef.current = user;
   }, [user]);
 
+
   // Memoize route checks
+
   const backButtonRoutes = useMemo(() => ["/notifications"], []);
 
   const shouldShowBackButton = useMemo(() => {
@@ -353,15 +366,15 @@ const ProtectedLayout = ({
           zIndex: pathname.startsWith("/feed/create-post")
             ? 10
             : pathname.startsWith("/feed")
-            ? 20
-            : 30,
+              ? 20
+              : 30,
         }}
         className="fixed top-0 left-0 right-0 flex items-center justify-between pointer-events-auto p-6 pl-5 pb-0 bg-white"
       >
         <div className="flex items-center space-x-4">
           {userIsAuthenticated &&
-          shouldShowBackButton &&
-          !pathname.includes("/create-post") ? (
+            shouldShowBackButton &&
+            !pathname.includes("/create-post") ? (
             // Show back button for chatroom and notifications
             <button
               onClick={handleBack}
@@ -377,9 +390,8 @@ const ProtectedLayout = ({
             // Show quote icon/menu on other pages
             <button
               onClick={userIsAuthenticated ? toggleSidebar : undefined}
-              className={`rounded-lg transition-all duration-300 text-black ${
-                userIsAuthenticated ? "cursor-pointer" : "cursor-default"
-              }`}
+              className={`rounded-lg transition-all duration-300 text-black ${userIsAuthenticated ? "cursor-pointer" : "cursor-default"
+                }`}
             >
               <div className="relative w-[68px] h-[55px]">
                 <QuoteIcon
@@ -448,9 +460,8 @@ const ProtectedLayout = ({
       )}
 
       <main
-        className={`relative z-10 pt-18 overflow-hidden  ${
-          isClient && sidebarOpen ? "pointer-events-none" : ""
-        }`}
+        className={`relative z-10 pt-18 overflow-hidden  ${isClient && sidebarOpen ? "pointer-events-none" : ""
+          }`}
       >
         {children}
       </main>

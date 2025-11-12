@@ -2,7 +2,6 @@
 
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
-import { refreshUserToken } from "../../action";
 
 const useUserStore = create(
   persist(

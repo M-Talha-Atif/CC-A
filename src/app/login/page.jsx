@@ -1114,8 +1114,17 @@ const page = () => {
             return;
           }
 
-          const { user } = response.data;
+          const { accessToken, refreshToken, user } = response.data;
+
+          console.log(user)
+          
           setUser(user);
+          
+          if (typeof window !== "undefined" && accessToken && refreshToken) {
+            localStorage.setItem("accessToken", accessToken);
+            localStorage.setItem("refreshToken", refreshToken);
+            console.log("✅ Tokens stored in localStorage");
+          }
 
           // Handle token if provided (Google auth)
           if (response.data.accessToken) {
@@ -1128,6 +1137,7 @@ const page = () => {
           if (isNewUser) {
             setLoadingMessage("Setting up your account...");
           } else {
+            console.log("old")
             setLoadingMessage("Signing you in...");
           }
 
@@ -1672,7 +1682,7 @@ const page = () => {
   };
 
   const PasswordRequirements = ({ requirements, show }) => {
-    if (!show || authMode==="login") return null;
+    if (!show || authMode === "login") return null;
 
     const requirementsList = [
       {
@@ -1984,14 +1994,14 @@ const page = () => {
                   Already have an account?{" "}
                   <span
                     className="font-semibold"
-                    onClick={() =>{
-                       router.push(
+                    onClick={() => {
+                      router.push(
                         "/login?flow=creative&step=login-choice&mode=login"
                       )
-                        setFormData(prev => ({ ...prev, password: "", confirmPassword: "", email: "" }));
+                      setFormData(prev => ({ ...prev, password: "", confirmPassword: "", email: "" }));
                     }
-                     
-                      
+
+
                     }
                   >
                     Log in here
@@ -2002,14 +2012,14 @@ const page = () => {
                   Don't have an account?{" "}
                   <span
                     className="font-semibold"
-                    onClick={() =>{
+                    onClick={() => {
                       router.push(
                         "/login?flow=creative&step=login-choice&mode=signup"
                       )
                       setFormData(prev => ({ ...prev, password: "", confirmPassword: "", email: "" }));
                       setConfirmPassword("")
                     }
-                      
+
                     }
                   >
                     Sign up here
