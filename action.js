@@ -64,12 +64,72 @@ export const refreshTokenServer = async () => {
 /**
  * Make authenticated server-side request with automatic retry on 401
  */
+// const makeAuthenticatedRequest = async (url, options = {}) => {
+//   const cookieStore = await cookies();
+
+//   try {
+//     const response = await axios({
+//       url,
+//       headers: {
+//         Cookie: cookieStore.toString(),
+//         "Content-Type": "application/json",
+//         ...options.headers,
+//       },
+//       timeout: 30000,
+//       withCredentials: true,
+//       ...options,
+//     });
+
+//     return { success: true, data: response.data };
+//   } catch (error) {
+//     if (error.response?.status === 401 && !options.skipRefresh) {
+//       console.log("Token expired, attempting refresh...");
+
+//       const refreshResult = await refreshTokenServer();
+
+//       if (refreshResult.success) {
+//         try {
+//           const retryResponse = await axios({
+//             url,
+//             headers: {
+//               Cookie: (await cookies()).toString(),
+//               "Content-Type": "application/json",
+//               ...options.headers,
+//             },
+//             timeout: 30000,
+//             withCredentials: true,
+//             ...options,
+//             skipRefresh: true,
+//           });
+
+//           return { success: true, data: retryResponse.data };
+//         } catch (retryError) {
+//           throw retryError;
+//         }
+//       } else {
+//         throw error;
+//       }
+//     } else {
+//       throw error;
+//     }
+//   }
+// };
+
+// ==========================================
+// AUTHENTICATION ACTIONS
+// ==========================================
+
+
+/**
+ * Make authenticated server-side request with automatic retry on 401
+ */
 const makeAuthenticatedRequest = async (url, options = {}) => {
   const cookieStore = await cookies();
-
   try {
-    const response = await axios({
+    const response = await axiosInstance({
       url,
+      method: options.method || "GET",
+      data: options.data || {},
       headers: {
         Cookie: cookieStore.toString(),
         "Content-Type": "application/json",
@@ -79,18 +139,19 @@ const makeAuthenticatedRequest = async (url, options = {}) => {
       withCredentials: true,
       ...options,
     });
-
     return { success: true, data: response.data };
   } catch (error) {
+    // If token expired, retry after refresh
     if (error.response?.status === 401 && !options.skipRefresh) {
       console.log("Token expired, attempting refresh...");
 
-      const refreshResult = await refreshTokenServer();
-
-      if (refreshResult.success) {
+      const refreshResult = await refreshTokenServer?.();
+      if (refreshResult?.success) {
         try {
-          const retryResponse = await axios({
+          const retryResponse = await axiosInstance({
             url,
+            method: options.method || "GET",
+            data: options.data || {},
             headers: {
               Cookie: (await cookies()).toString(),
               "Content-Type": "application/json",
@@ -101,7 +162,6 @@ const makeAuthenticatedRequest = async (url, options = {}) => {
             ...options,
             skipRefresh: true,
           });
-
           return { success: true, data: retryResponse.data };
         } catch (retryError) {
           throw retryError;
@@ -115,9 +175,6 @@ const makeAuthenticatedRequest = async (url, options = {}) => {
   }
 };
 
-// ==========================================
-// AUTHENTICATION ACTIONS
-// ==========================================
 
 export const login = async ({ email, password }) => {
   try {
@@ -284,6 +341,8 @@ export const checkEmailExists = async (email) => {
         },
       }
     );
+
+    console.log(data)
 
     return {
       success: true,

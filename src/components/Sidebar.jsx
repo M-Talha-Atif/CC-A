@@ -48,7 +48,7 @@ const Sidebar = ({
 
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
-    // Add these refs for scroll locking
+  // Add these refs for scroll locking
   const scrollYRef = useRef(0);
   const scrollLockApplied = useRef(false);
 
@@ -57,23 +57,23 @@ const Sidebar = ({
     if (sidebarOpen) {
       // Store current scroll position
       scrollYRef.current = window.scrollY;
-      
+
       // Apply scroll lock
       const body = document.body;
       const scrollBarWidth = window.innerWidth - document.documentElement.clientWidth;
-      
+
       body.style.position = 'fixed';
       body.style.top = `-${scrollYRef.current}px`;
       body.style.left = '0';
       body.style.right = '0';
       body.style.overflow = 'hidden';
       body.style.width = '100%';
-      
+
       // Compensate for scrollbar gap to prevent layout shift
       if (scrollBarWidth > 0) {
         body.style.paddingRight = `${scrollBarWidth}px`;
       }
-      
+
       scrollLockApplied.current = true;
 
       // Prevent touch move on background
@@ -89,12 +89,12 @@ const Sidebar = ({
 
       return () => {
         document.removeEventListener('touchmove', preventTouchMove);
-        
+
         // Only restore if we applied the lock
         if (scrollLockApplied.current) {
           const body = document.body;
           const scrollY = parseInt(body.style.top || '0');
-          
+
           // Restore styles
           body.style.position = '';
           body.style.top = '';
@@ -103,7 +103,7 @@ const Sidebar = ({
           body.style.overflow = '';
           body.style.width = '';
           body.style.paddingRight = '';
-          
+
           // Restore scroll position
           window.scrollTo(0, Math.abs(scrollY) || scrollYRef.current);
           scrollLockApplied.current = false;
@@ -121,6 +121,20 @@ const Sidebar = ({
       setHasTriedFetchingPoints(true);
     }
   }, [totalPoints]);
+
+  useEffect(() => {
+    if (sidebarOpen) {
+      (async () => {
+        console.log("refreshing the points")
+        const [pointsData, rankData] = await Promise.all([getPoints(), getRank()]);
+        setPoints(pointsData.points);
+        setRank(rankData.rank);
+        console.log("refreshing done")
+      })();
+    }
+  }, [sidebarOpen]);
+
+
 
   // Update rank when user.rank prop changes
   useEffect(() => {
@@ -375,10 +389,9 @@ const Sidebar = ({
 
       {/* Sidebar */}
       <div
-        className={`fixed top-0 left-0 h-full w-64 md:w-80 bg-[#e5e5e5] z-50 transform transition-transform duration-300 ease-in-out ${
-          sidebarOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
-        data-sidebar-content 
+        className={`fixed top-0 left-0 h-full w-64 md:w-80 bg-[#e5e5e5] z-50 transform transition-transform duration-300 ease-in-out ${sidebarOpen ? "translate-x-0" : "-translate-x-full"
+          }`}
+        data-sidebar-content
       >
         <div className="p-6 pt-3 h-full flex flex-col">
           {/* Sidebar Header */}

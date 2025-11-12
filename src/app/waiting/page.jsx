@@ -11,7 +11,7 @@ import useHelpCenterStore from "@/hooks/useHelpCenter";
 const Page = () => {
   const router = useRouter();
   const [isChecking, setIsChecking] = useState(false);
-  const { isAuthenticated, hasHydrated, clearUser } = useUserStore();
+  const { isAuthenticated, hasHydrated, clearUser, user } = useUserStore();
   const { openHelpCenter } = useHelpCenterStore();
   const [showRejectedPopup, setShowRejectedPopup] = useState(false);
 
@@ -40,7 +40,8 @@ const Page = () => {
         }
 
         setIsChecking(false);
-      } catch (error) {
+      }
+      catch (error) {
         console.error("Status check failed:", error);
         if (error?.status === 401 || error?.status === 403) {
           router.replace("/login?flow=creative&step=login-choice&mode=login");
@@ -53,6 +54,8 @@ const Page = () => {
     checkAndRedirect();
 
     const statusCheckInterval = setInterval(async () => {
+
+      // console.log(user)
       if (!isAuthenticated) {
         clearInterval(statusCheckInterval);
         return;
@@ -78,7 +81,7 @@ const Page = () => {
           router.replace("/login?flow=creative&step=login-choice&mode=login");
         }
       }
-    }, 30000);
+    }, 10000);
 
     return () => {
       if (statusCheckInterval) {

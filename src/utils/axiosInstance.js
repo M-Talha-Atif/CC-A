@@ -2,7 +2,7 @@ import axios from "axios";
 
 const axiosInstance = axios.create({
   baseURL: process.env.NEXT_PUBLIC_BASE_URL,
-  withCredentials: true, // This sends cookies automatically
+  withCredentials: true,
   headers: {
     "Content-Type": "application/json",
   },
@@ -22,6 +22,20 @@ const processQueue = (error, token = null) => {
   failedQueue = [];
 };
 
+// Request interceptor to add token from localStorage if available
+axiosInstance.interceptors.request.use(
+  (config) => {
+    if (typeof window !== "undefined") {
+      const token = localStorage.getItem('accessToken');
+      if (token && !config.headers.Authorization) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
 // Response interceptor
 axiosInstance.interceptors.response.use(
   (response) => response,
@@ -33,7 +47,16 @@ axiosInstance.interceptors.response.use(
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });
         })
-          .then(() => axiosInstance(originalRequest))
+          .then(() => {
+            // Update token for the retried request
+            if (typeof window !== "undefined") {
+              const token = localStorage.getItem('accessToken');
+              if (token) {
+                originalRequest.headers.Authorization = `Bearer ${token}`;
+              }
+            }
+            return axiosInstance(originalRequest);
+          })
           .catch((err) => Promise.reject(err));
       }
 
@@ -41,67 +64,48 @@ axiosInstance.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        // Try cookie-based refresh first
+        console.log("🔄 Axios interceptor: Attempting token refresh...");
+        
+        // Use the same endpoint but let the server handle cookie-based refresh
         const response = await axiosInstance.post("/api/auth/refresh-token");
         
-        console.log("✅ Token refresh response:", response.data);
-        processQueue(null, true);
-        isRefreshing = false;
-
-        return axiosInstance(originalRequest);
-      } catch (refreshError) {
-        console.error("❌ Cookie refresh failed, trying fallback:", refreshError);
+        console.log("✅ Axios interceptor: Token refresh successful");
         
-        // Fallback: Check localStorage for refresh token
-        if (typeof window !== "undefined") {
-          const fallbackRefreshToken = localStorage.getItem('refreshToken');
-          
-          if (fallbackRefreshToken) {
-            try {
-              console.log("🔄 Attempting fallback refresh...");
-              const fallbackResponse = await axios.post(
-                `${process.env.NEXT_PUBLIC_BASE_URL}api/auth/refresh-token`,
-                { refreshToken: fallbackRefreshToken },
-                {
-                  headers: {
-                    "Content-Type": "application/json",
-                  },
-                  withCredentials: false // Don't use cookies for fallback
-                }
-              );
-
-              if (fallbackResponse.data?.data?.accessToken) {
-                // Store new tokens
-                localStorage.setItem('accessToken', fallbackResponse.data.data.accessToken);
-                localStorage.setItem('refreshToken', fallbackResponse.data.data.refreshToken);
-                
-                // Update current request header
-                originalRequest.headers.Authorization = `Bearer ${fallbackResponse.data.data.accessToken}`;
-                
-                processQueue(null, true);
-                isRefreshing = false;
-                return axiosInstance(originalRequest);
-              }
-            } catch (fallbackError) {
-              console.error("❌ Fallback refresh also failed:", fallbackError);
+        // Store tokens if returned in response (for fallback)
+        if (response.data?.data?.accessToken) {
+          if (typeof window !== "undefined") {
+            localStorage.setItem('accessToken', response.data.data.accessToken);
+            if (response.data.data.refreshToken) {
+              localStorage.setItem('refreshToken', response.data.data.refreshToken);
             }
           }
         }
+        
+        processQueue(null, true);
+        isRefreshing = false;
 
-        // All refresh attempts failed
-        console.error("❌ All refresh attempts failed");
+        // Update the original request with new token
+        if (typeof window !== "undefined") {
+          const newToken = localStorage.getItem('accessToken');
+          if (newToken) {
+            originalRequest.headers.Authorization = `Bearer ${newToken}`;
+          }
+        }
+
+        return axiosInstance(originalRequest);
+      } catch (refreshError) {
+        console.error("❌ Axios interceptor: Refresh failed", refreshError);
+        
+        // Don't attempt fallback refresh here - let SessionManager handle it
+        // This prevents multiple refresh attempts
+        
         processQueue(refreshError, null);
         isRefreshing = false;
 
+        // Clear auth data but don't redirect here
         if (typeof window !== "undefined") {
-          // Clear all auth data
           localStorage.removeItem('accessToken');
           localStorage.removeItem('refreshToken');
-          sessionStorage.removeItem("user_cache");
-          sessionStorage.removeItem("last_refresh");
-          
-          // Redirect to login
-          window.location.href = "/login?flow=creative&step=login-choice&mode=login";
         }
 
         return Promise.reject(refreshError);

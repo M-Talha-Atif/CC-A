@@ -68,7 +68,6 @@ const ChatroomClient = () => {
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
   const { user, isAuthenticated } = useUserStore();
-
   const [post, setPost] = useState(null);
   const [comments, setComments] = useState([]);
   const [replyTo, setReplyTo] = useState(null);
@@ -91,6 +90,8 @@ const ChatroomClient = () => {
   const [showSharePreview, setShowSharePreview] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
   const [voting, setVoting] = useState({});
+
+ 
 
   const showToast = (message, type = "info") => {
     setToast({ message, type });
@@ -698,7 +699,7 @@ const ChatroomClient = () => {
                       <ChatroomTimer
                         post={post.quotedPostSnapshot}
                         formatTimeRemaining={formatTimeRemaining}
-                        // Don't pass onJoinChatroom since this is just a preview
+                      // Don't pass onJoinChatroom since this is just a preview
                       />
                     </div>
                   ) : (
@@ -716,22 +717,20 @@ const ChatroomClient = () => {
                 <div className="flex items-center space-x-4 sm:space-x-6">
                   <button
                     onClick={() => handlePostLike(post.id)}
-                    className={`flex items-center space-x-2 transition-colors duration-300 cursor-pointer ${
-                      isAuthenticated && likedPosts.has(post.id)
-                        ? "text-red-600"
-                        : "text-gray-600 hover:text-red-600"
-                    }`}
+                    className={`flex items-center space-x-2 transition-colors duration-300 cursor-pointer ${isAuthenticated && likedPosts.has(post.id)
+                      ? "text-red-600"
+                      : "text-gray-600 hover:text-red-600"
+                      }`}
                   >
                     <span className="text-sm">{post.likes} Likes</span>
                   </button>
 
                   <button
                     onClick={() => handlePostSave(post.id)}
-                    className={`flex items-center space-x-2 transition-colors duration-300 cursor-pointer ${
-                      isAuthenticated && savedPosts.has(post.id)
-                        ? "text-blue-600"
-                        : "text-gray-600 hover:text-blue-600"
-                    }`}
+                    className={`flex items-center space-x-2 transition-colors duration-300 cursor-pointer ${isAuthenticated && savedPosts.has(post.id)
+                      ? "text-blue-600"
+                      : "text-gray-600 hover:text-blue-600"
+                      }`}
                   >
                     <span className="text-sm">{post.saves} Saves</span>
                   </button>
@@ -740,11 +739,10 @@ const ChatroomClient = () => {
                 <div className="flex items-center space-x-4 sm:space-x-6">
                   <button
                     onClick={() => handlePostLike(post.id)}
-                    className={`flex items-center space-x-2 transition-colors duration-300 cursor-pointer ${
-                      isAuthenticated && likedPosts.has(post.id)
-                        ? "text-red-600"
-                        : "text-gray-600 hover:text-red-600"
-                    }`}
+                    className={`flex items-center space-x-2 transition-colors duration-300 cursor-pointer ${isAuthenticated && likedPosts.has(post.id)
+                      ? "text-red-600"
+                      : "text-gray-600 hover:text-red-600"
+                      }`}
                   >
                     <Heart
                       size={16}
@@ -759,11 +757,10 @@ const ChatroomClient = () => {
 
                   <button
                     onClick={() => handlePostSave(post.id)}
-                    className={`flex items-center space-x-2 transition-colors duration-300 cursor-pointer ${
-                      isAuthenticated && savedPosts.has(post.id)
-                        ? "text-blue-600"
-                        : "text-gray-600 hover:text-blue-600"
-                    }`}
+                    className={`flex items-center space-x-2 transition-colors duration-300 cursor-pointer ${isAuthenticated && savedPosts.has(post.id)
+                      ? "text-blue-600"
+                      : "text-gray-600 hover:text-blue-600"
+                      }`}
                   >
                     <Bookmark
                       size={16}

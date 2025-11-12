@@ -1,70 +1,71 @@
 "use client";
-import { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
-import { usePathname } from 'next/navigation';
+import { createContext, useContext, useState, useEffect, useRef, useCallback } from "react";
+import { usePathname } from "next/navigation";
 
 const ScrollVisibilityContext = createContext();
 
 export function ScrollVisibilityProvider({ children }) {
   const [isVisible, setIsVisible] = useState(true);
   const [isAtTop, setIsAtTop] = useState(true);
-
   const lastScrollY = useRef(0);
   const ticking = useRef(false);
   const hasInitialized = useRef(false);
   const pathname = usePathname();
 
+  const getScrollValues = () => {
+    // Use iOS-safe fallbacks
+    const scrollY =
+      window.scrollY ||
+      document.scrollingElement?.scrollTop ||
+      document.documentElement.scrollTop ||
+      document.body.scrollTop ||
+      0;
+
+    const scrollHeight =
+      document.scrollingElement?.scrollHeight ||
+      document.documentElement.scrollHeight ||
+      document.body.scrollHeight ||
+      0;
+
+    const clientHeight =
+      document.scrollingElement?.clientHeight ||
+      document.documentElement.clientHeight ||
+      window.innerHeight ||
+      0;
+
+    return { scrollY, scrollHeight, clientHeight };
+  };
+
   const updateScrollDirection = useCallback(() => {
-    const scrollY = window.scrollY;
-    const scrollHeight = document.documentElement.scrollHeight;
-    const clientHeight = document.documentElement.clientHeight;
+    const { scrollY, scrollHeight, clientHeight } = getScrollValues();
 
-    // Check if we're at the bottom of the page
-    // const isAtBottom = scrollY + clientHeight >= scrollHeight - 100; // 100px threshold
-
-    const bottomThreshold = Math.max(100, window.innerHeight * 0.1); // 10% of screen height or 100px min
-    const isAtBottom = scrollY + clientHeight >= scrollHeight - bottomThreshold;
-
-
-    console.log('🔄 updateScrollDirection called', {
-      scrollY,
-      lastScrollY: lastScrollY.current,
-      scrollHeight,
-      clientHeight,
-      isAtBottom
-    });
-
-    // Always update isAtTop
-    const newIsAtTop = scrollY < 50;
-    setIsAtTop(newIsAtTop);
-
-    if (!hasInitialized.current) {
-      console.log('🎯 First initialization, setting lastScrollY:', scrollY);
-      lastScrollY.current = scrollY;
-      hasInitialized.current = true;
-
-      if (scrollY > 50) {
-        console.log('📄 Page loaded with scroll position > 50, hiding headers');
-        setIsVisible(false);
-      } else {
-        console.log('📄 Page loaded at top, showing headers');
-        setIsVisible(true);
-      }
+    // Skip invalid or "rubber band" scroll positions on iOS
+    if (scrollY < 0 || scrollY > scrollHeight - clientHeight + 200) {
+      ticking.current = false;
       return;
     }
 
-    // CRITICAL FIX: Don't show header when at bottom of page
+    const bottomThreshold = Math.max(100, window.innerHeight * 0.1);
+    const isAtBottom = scrollY + clientHeight >= scrollHeight - bottomThreshold;
+
+    // Update top state
+    const newIsAtTop = scrollY < 50;
+    setIsAtTop(newIsAtTop);
+
+    // First-time initialization
+    if (!hasInitialized.current) {
+      lastScrollY.current = scrollY;
+      hasInitialized.current = true;
+      setIsVisible(scrollY <= 50);
+      return;
+    }
+
+    // Handle visibility logic
     if (isAtBottom && lastScrollY.current > 0) {
-      console.log('🔚 At bottom of page → visible: false');
       setIsVisible(false);
-    }
-    // Show header when scrolling up or near top
-    else if (scrollY < lastScrollY.current || scrollY < 50) {
-      console.log('👆 Scrolling up or near top → visible: true');
+    } else if (scrollY < lastScrollY.current || scrollY < 50) {
       setIsVisible(true);
-    }
-    // Hide header when scrolling down and not near top
-    else if (scrollY > lastScrollY.current && scrollY > 50) {
-      console.log('👇 Scrolling down and not near top → visible: false');
+    } else if (scrollY > lastScrollY.current && scrollY > 50) {
       setIsVisible(false);
     }
 
@@ -74,52 +75,36 @@ export function ScrollVisibilityProvider({ children }) {
 
   const onScroll = useCallback(() => {
     if (!ticking.current) {
-      console.log('🎪 Scroll event detected, requesting animation frame');
       requestAnimationFrame(updateScrollDirection);
       ticking.current = true;
     }
   }, [updateScrollDirection]);
 
+  // Scroll + resize (Safari address bar change) listeners
   useEffect(() => {
-    console.log('🚀 ScrollVisibilityProvider mounted');
-
-    // Initial check
     updateScrollDirection();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("touchmove", onScroll, { passive: true });
+    window.addEventListener("resize", updateScrollDirection, { passive: true });
 
-    // Add scroll listener
-    window.addEventListener('scroll', onScroll, { passive: true });
-
-    // Delayed check for DOM readiness
-    const delayedCheck = setTimeout(() => {
-      console.log('⏰ Delayed scroll check');
-      updateScrollDirection();
-    }, 100);
+    const delayedCheck = setTimeout(() => updateScrollDirection(), 100);
 
     return () => {
-      console.log('🧹 ScrollVisibilityProvider cleanup');
-      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("touchmove", onScroll);
+      window.removeEventListener("resize", updateScrollDirection);
       clearTimeout(delayedCheck);
     };
   }, [onScroll, updateScrollDirection]);
 
-  // Force scroll check on route changes
+  // Force scroll recheck on route change
   useEffect(() => {
-    console.log('📍 Route changed:', pathname);
-
-    // Reset initialization to force fresh check on route change
     hasInitialized.current = false;
-
-    // Force scroll check after route change
     const timer = setTimeout(() => {
-      console.log('🔄 Forcing scroll check after route change');
       updateScrollDirection();
-
-      // Also trigger multiple scroll events to ensure detection
-      window.dispatchEvent(new Event('scroll'));
-      setTimeout(() => window.dispatchEvent(new Event('scroll')), 50);
-      setTimeout(() => window.dispatchEvent(new Event('scroll')), 100);
+      window.dispatchEvent(new Event("scroll"));
+      setTimeout(() => window.dispatchEvent(new Event("scroll")), 80);
     }, 150);
-
     return () => clearTimeout(timer);
   }, [pathname, updateScrollDirection]);
 
@@ -131,9 +116,7 @@ export function ScrollVisibilityProvider({ children }) {
 }
 
 export const useScrollVisibility = () => {
-  const context = useContext(ScrollVisibilityContext);
-  if (!context) {
-    throw new Error('useScrollVisibility must be used within ScrollVisibilityProvider');
-  }
-  return context;
+  const ctx = useContext(ScrollVisibilityContext);
+  if (!ctx) throw new Error("useScrollVisibility must be used within ScrollVisibilityProvider");
+  return ctx;
 };

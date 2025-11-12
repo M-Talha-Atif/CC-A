@@ -109,10 +109,8 @@ const HomePage = () => {
     const checkUserStatusAndProceed = async () => {
       try {
         setIsCheckingStatus(true);
-
         // Check onboarding progress first
         const onboardingResponse = await getOnboardingProgress();
-
         // If onboarding is not completed, redirect to login
         if (
           !onboardingResponse?.data ||
@@ -353,7 +351,7 @@ const HomePage = () => {
     return renderLoader();
   }
 
-  if (user && user.isNewUser === false && !hasRedirected) {
+  if (user && user.isNewUser === false && !hasRedirected && user.lastLoginAt===null) {
     console.log("Early redirect: User is not new");
     safeRedirect("/feed/new", "Early redirect - not new user");
     return renderLoader();

@@ -133,6 +133,41 @@ const page = () => {
   const [showPasswordError, setShowPasswordError] = useState(false);
   const [showWebsiteError, setShowWebsiteError] = useState(false);
 
+
+  useEffect(() => {
+    // Reset all validation states when auth mode changes
+    setEmailValidation({
+      isValid: false,
+      message: "",
+      type: "",
+    });
+    setPasswordValidation({
+      isValid: false,
+      message: "",
+      requirements: {
+        length: false,
+        uppercase: false,
+        lowercase: false,
+        number: false,
+      },
+    });
+    setConfirmPasswordValidation({
+      isValid: false,
+      message: "",
+      type: "",
+    });
+
+    // Clear any visible error states
+    setShowEmailError(false);
+    setShowPasswordError(false);
+    setShowConfirmPasswordError(false);
+
+    // Clear any existing timers
+    if (emailTypingTimer) clearTimeout(emailTypingTimer);
+    if (passwordTypingTimer) clearTimeout(passwordTypingTimer);
+    if (confirmPasswordTypingTimer) clearTimeout(confirmPasswordTypingTimer);
+  }, [authMode]);
+
   useEffect(() => {
     if (!isHydrated) return;
 
@@ -1410,6 +1445,8 @@ const page = () => {
             "creative-domain"
           );
 
+          console.log("new user onboarding true now")
+
           await updateServerProgress(
             "onboarding-completed",
             {
@@ -1418,7 +1455,7 @@ const page = () => {
             "onboarding-completed"
           );
 
-          // ✅ FIX: Update user state synchronously and wait for it
+          // FIX: Update user state synchronously and wait for it
           setUser((prevUser) => ({
             ...prevUser,
             isNewUser: false,
@@ -1427,6 +1464,8 @@ const page = () => {
               onboardingCompleted: true,
             },
           }));
+
+          console.log("new user is false now")
 
           // ✅ CRITICAL: Add a small delay to ensure Zustand store persists
           // This gives the store time to save the state before navigation
@@ -1567,8 +1606,8 @@ const page = () => {
           onClick={onBack}
           disabled={isLoading}
           className={`transition-colors p-2 ${isLoading
-              ? "text-gray-400 cursor-not-allowed"
-              : "text-black hover:text-gray-800 cursor-pointer"
+            ? "text-gray-400 cursor-not-allowed"
+            : "text-black hover:text-gray-800 cursor-pointer"
             }`}
         >
           <ChevronLeft size={24} />
@@ -1582,8 +1621,8 @@ const page = () => {
         onClick={onNext}
         disabled={!canContinue || isLoading}
         className={`transition-colors p-2 relative group ${canContinue && !isLoading
-            ? "text-black hover:text-gray-800 cursor-pointer"
-            : "text-gray-400 cursor-not-allowed"
+          ? "text-black hover:text-gray-800 cursor-pointer"
+          : "text-gray-400 cursor-not-allowed"
           }`}
         title={
           !canContinue && !isLoading
@@ -1633,7 +1672,7 @@ const page = () => {
   };
 
   const PasswordRequirements = ({ requirements, show }) => {
-    if (!show) return null;
+    if (!show || authMode==="login") return null;
 
     const requirementsList = [
       {
@@ -1945,10 +1984,14 @@ const page = () => {
                   Already have an account?{" "}
                   <span
                     className="font-semibold"
-                    onClick={() =>
-                      router.push(
+                    onClick={() =>{
+                       router.push(
                         "/login?flow=creative&step=login-choice&mode=login"
                       )
+                        setFormData(prev => ({ ...prev, password: "", confirmPassword: "", email: "" }));
+                    }
+                     
+                      
                     }
                   >
                     Log in here
@@ -1959,10 +2002,14 @@ const page = () => {
                   Don't have an account?{" "}
                   <span
                     className="font-semibold"
-                    onClick={() =>
+                    onClick={() =>{
                       router.push(
                         "/login?flow=creative&step=login-choice&mode=signup"
                       )
+                      setFormData(prev => ({ ...prev, password: "", confirmPassword: "", email: "" }));
+                      setConfirmPassword("")
+                    }
+                      
                     }
                   >
                     Sign up here
@@ -2109,8 +2156,8 @@ const page = () => {
                         onClick={handleResendVerificationEmail}
                         disabled={resendCooldown > 0 || isLoading}
                         className={`w-full py-3 px-6 rounded-full font-semibold transition-colors ${resendCooldown > 0 || isLoading
-                            ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-                            : "bg-black text-white hover:bg-gray-800"
+                          ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                          : "bg-black text-white hover:bg-gray-800"
                           }`}
                       >
                         {isLoading ? (
@@ -2226,8 +2273,8 @@ const page = () => {
                 type="submit"
                 disabled={isLoading}
                 className={`w-full border-2 py-4 px-6 rounded-full font-semibold transition-colors flex items-center justify-center gap-3 ${isLoading
-                    ? "border-gray-200 text-gray-400 cursor-not-allowed bg-gray-100"
-                    : "border-gray-300 text-gray-700 hover:border-gray-400"
+                  ? "border-gray-200 text-gray-400 cursor-not-allowed bg-gray-100"
+                  : "border-gray-300 text-gray-700 hover:border-gray-400"
                   }`}
               >
                 {isLoading ? (
@@ -2243,44 +2290,6 @@ const page = () => {
           </div>
         );
 
-      // case "business-name":
-      //   return (
-      //     <div className="w-full max-w-md">
-      //       <div className="text-left mb-8">
-      //         <h1 className="text-3xl font-bold text-gray-900">
-      //           Setup Your Profile
-      //         </h1>
-      //       </div>
-
-      //       <form onSubmit={handleSubmit} className="space-y-6">
-      //         <div>
-      //           <div className="relative">
-      //             <Building
-      //               className="absolute left-3 top-3 text-gray-400"
-      //               size={20}
-      //             />
-      //             <input
-      //               type="text"
-      //               value={formData.businessName}
-      //               onChange={(e) =>
-      //                 handleInputChange("businessName", e.target.value)
-      //               }
-      //               className="w-full pl-12 pr-4 py-3 text-gray-800 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
-      //               placeholder="Your Business Name"
-      //               required
-      //             />
-      //           </div>
-      //         </div>
-
-      //         <NavigationButtons
-      //           onNext={() => handleSubmit(event)}
-      //           onBack={goToPrevStep}
-      //           canContinue={formData.businessName.trim().length > 0}
-      //           showBack={false}
-      //         />
-      //       </form>
-      //     </div>
-      //   );
 
       case "business-website":
         return (
@@ -2305,11 +2314,11 @@ const page = () => {
                       handleInputChange("website", e.target.value)
                     }
                     className={`w-full pl-12 pr-4 py-3 text-gray-800 border rounded-lg focus:ring-2 focus:ring-black focus:border-transparent ${websiteValidation.type === "error" && showWebsiteError
-                        ? "border-red-300"
-                        : websiteValidation.type === "success" &&
-                          showWebsiteError
-                          ? "border-green-300"
-                          : "border-gray-300"
+                      ? "border-red-300"
+                      : websiteValidation.type === "success" &&
+                        showWebsiteError
+                        ? "border-green-300"
+                        : "border-gray-300"
                       }`}
                     placeholder="https://yourbusiness.com"
                     required
@@ -2414,10 +2423,10 @@ const page = () => {
                     onClick={() => handleDomainSelection(domain.id)}
                     disabled={isDisabled}
                     className={`w-full p-4 rounded-full border-2 transition-colors flex flex-col items-center gap-2 ${isSelected
-                        ? "border-black bg-black text-white"
-                        : isDisabled
-                          ? "border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed"
-                          : "border-gray-300 hover:border-gray-400 text-gray-700"
+                      ? "border-black bg-black text-white"
+                      : isDisabled
+                        ? "border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed"
+                        : "border-gray-300 hover:border-gray-400 text-gray-700"
                       }`}
                   >
                     <span className="font-medium text-sm">{domain.name}</span>
@@ -2463,8 +2472,8 @@ const page = () => {
                       }
                       disabled={isLoading}
                       className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-black focus:border-transparent ${isLoading
-                          ? "bg-gray-100 cursor-not-allowed"
-                          : "border-gray-300"
+                        ? "bg-gray-100 cursor-not-allowed"
+                        : "border-gray-300"
                         }`}
                       placeholder="your@business.com"
                       required
@@ -2481,8 +2490,8 @@ const page = () => {
                     type="submit"
                     disabled={isLoading || !formData.resetEmail}
                     className={`w-full py-4 px-6 rounded-full font-semibold transition-colors ${isLoading || !formData.resetEmail
-                        ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-                        : "bg-black text-white hover:bg-gray-800"
+                      ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                      : "bg-black text-white hover:bg-gray-800"
                       }`}
                   >
                     {isLoading ? (

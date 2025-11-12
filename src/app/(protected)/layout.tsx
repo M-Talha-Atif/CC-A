@@ -79,7 +79,7 @@ const ProtectedLayout = ({
     }
 
     return actuallyAuthenticated;
-  }, [isAuthenticated, user?.id, user?.email, delayLayoutChange]);
+  }, [isAuthenticated, delayLayoutChange, user]);
 
   // Fetch initial unread count
   useEffect(() => {

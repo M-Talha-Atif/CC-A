@@ -969,11 +969,11 @@ const CreatePage = () => {
                               onChange={(e) => {
                                 const raw = String(e.target.value || "");
                                 const noNewlines = raw.replace(/\r/g, "").replace(/\n/g, "");
-                                const capped = noNewlines.slice(0, 50); // total = 25 * 2 lines
+                                const capped = noNewlines.slice(0, 40); // total = 20 * 2 lines
 
-                                // split into two lines of 25 chars each
-                                const first = capped.slice(0, 25);
-                                const second = capped.length > 25 ? capped.slice(25) : "";
+                                // split into two lines of 20 chars each
+                                const first = capped.slice(0, 20);
+                                const second = capped.length > 20 ? capped.slice(20) : "";
                                 const formatted = second ? `${first}\n${second}` : first;
 
                                 console.log("first.length:", first.length, "second.length:", second.length);
@@ -984,10 +984,10 @@ const CreatePage = () => {
                               onPaste={(e) => {
                                 e.preventDefault();
                                 const pasted = (e.clipboardData || window.clipboardData).getData("text");
-                                const cleaned = pasted.replace(/\r/g, "").replace(/\n/g, "").slice(0, 50);
+                                const cleaned = pasted.replace(/\r/g, "").replace(/\n/g, "").slice(0, 40);
                                 const formatted =
-                                  cleaned.length > 25
-                                    ? `${cleaned.slice(0, 25)}\n${cleaned.slice(25)}`
+                                  cleaned.length > 20
+                                    ? `${cleaned.slice(0, 20)}\n${cleaned.slice(20)}`
                                     : cleaned;
                                 handlePollOptionChange(formatted, index);
                               }}
@@ -997,7 +997,7 @@ const CreatePage = () => {
                               placeholder={`Option ${index + 1}`}
                               className="w-full px-2 py-2 text-center bg-transparent focus:outline-none resize-none overflow-hidden"
                               rows={2}
-                              maxLength={50}
+                              maxLength={40}
                               spellCheck="false"
                               style={{
                                 height: "44px",
