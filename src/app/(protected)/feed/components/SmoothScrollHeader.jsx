@@ -7,6 +7,7 @@ import VideographerIcon from "../../../../components/icons/FilterIcons/Videograp
 import FloristIcon from "../../../../components/icons/FilterIcons/FloristIcon";
 import PlannerIcon from "../../../../components/icons/FilterIcons/PlannerIcon";
 import SeeAllIcon from "../../../../components/icons/FilterIcons/SeeAllIcon";
+import useUserStore from "../../../../store/userStore";
 
 const SmoothScrollHeader = ({
   searchTerm,
@@ -19,6 +20,8 @@ const SmoothScrollHeader = ({
   creativesSubFilter = "all"
 }) => {
   const { isVisible, isAtTop } = useScrollVisibility();
+    const { isAuthenticated } =
+      useUserStore();
 
   // // Override visibility when no posts
   // const isVisible = postsLength === 0 ? true : originalIsVisible;
@@ -46,8 +49,15 @@ const SmoothScrollHeader = ({
     selectedCategory === "Creatives" ||
     (selectedCategory !== "Couples" && selectedCategory !== "Bookmark");
 
-  const bannerText =
-    "Posts need a minimum of 1 like within 1 hour to be published.";
+  const bannerTextNew = "Posts need a minimum of 5 likes within 24hrs to be published";
+  const bannerTextPopular = "Posts need a minimum of 10 likes to be featured.";
+
+
+  const bannerText = selectedCategory === "Popular"
+    ? bannerTextPopular
+    : bannerTextNew;
+
+
 
   return (
     <motion.div
@@ -123,7 +133,7 @@ const SmoothScrollHeader = ({
       </div>
 
       {/* Banner for "New" category - only show when selectedCategory is "New" */}
-      {selectedCategory === "New" && (
+      { (selectedCategory === "New" || (selectedCategory === "Popular" && isAuthenticated)) && (
         <div className="w-full bg-black text-white py-2 overflow-hidden relative">
           <style jsx>{`
             @keyframes scroll {

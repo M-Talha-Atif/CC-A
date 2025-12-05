@@ -82,7 +82,7 @@ const NewUserPage = () => {
             <div className="flex items-start  mb-4">
               <div className="text-xs text-gray-700 flex-1">
                 <p className=" mb-1">
-                  From: CUNO COVO - <span className="underline ">info@cunocovo.com</span>
+                  From: CUNO COVO -  <a href="mailto:info@cunocovo.com" className="underline">  info@cunocovo.com </a>
                 </p>
                 <p className="text-gray-600 mb-1">
                   cc: Photographer, Videographer, Florist, Planner
@@ -95,21 +95,21 @@ const NewUserPage = () => {
               <p>
                 CUNO COVO is a platform for wedding Creatives to cut
                 through the noise, and say what needs to be said with
-                intention anonymously. And will align Couples seeking Creatives for
-                their wedding event(s).
+                intention, <strong>anonymously</strong>. And soon will help Couples
+                discover aligned wedding Creatives.
               </p>
 
               <div className=" mt-2">
 
                 <p className="font-bold">
-                  Valuing privacy and authenticity
+                  Valuing privacy and authenticity.
                 </p>
                 <p className="font-bold">
-                  A new way to align with couples
+                  A new way to align with couples.
                 </p>
               </div>
 
-        
+
             </div>
           </div>
 

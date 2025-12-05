@@ -37,9 +37,9 @@ import {
   resendVerificationEmail,
   checkEmailVerificationStatus,
   checkEmailExists,
+  checkInstagramExists,
 } from "../../../action";
 import axios from "axios";
-
 import { useGoogleLogin } from "@react-oauth/google";
 import useUserStore from "@/store/userStore";
 import Logout from "../../components/Logout";
@@ -52,7 +52,6 @@ import {
   saveToStorage,
 } from "../../utils/saveToLocal";
 import AuthLayout from "./components/AuthLayout";
-import CustomApiError from "@/utils/CustomApiError";
 import useHelpCenterStore from "@/hooks/useHelpCenter";
 
 let tokenClient = null;
@@ -132,6 +131,76 @@ const page = () => {
   const [showEmailError, setShowEmailError] = useState(false);
   const [showPasswordError, setShowPasswordError] = useState(false);
   const [showWebsiteError, setShowWebsiteError] = useState(false);
+
+  const [instagramValidation, setInstagramValidation] = useState({
+    isValid: false,
+    message: "",
+    type: "",
+  });
+  const [instagramTypingTimer, setInstagramTypingTimer] = useState(null);
+  const [showInstagramError, setShowInstagramError] = useState(false);
+  const instagramRequestRef = useRef(0);  // tracks latest request
+
+
+  const validateInstagram = async (input) => {
+    const clean = input
+
+    // Empty field = reset UI
+    if (!clean) {
+      setInstagramValidation({
+        isValid: false,
+        message: "",
+        type: "",
+      });
+      return;
+    }
+
+    // Track request ID
+    const requestId = ++instagramRequestRef.current;
+
+    try {
+      setInstagramValidation({
+        isValid: false,
+        message: "",
+        type: "loading",
+      });
+
+      const response = await checkInstagramExists(clean);
+
+      // Ignore old responses
+      if (requestId !== instagramRequestRef.current) return;
+
+      if (!response.success) {
+        setInstagramValidation({
+          isValid: false,
+          message: response.message,
+          type: "error",
+        });
+        return;
+      }
+
+      if (response.exists) {
+        setInstagramValidation({
+          isValid: false,
+          message: "Instagram already in use",
+          type: "error",
+        });
+      } else {
+        setInstagramValidation({
+          isValid: true,
+          message: "Instagram handle available",
+          type: "success",
+        });
+      }
+    } catch (err) {
+      setInstagramValidation({
+        isValid: false,
+        message: "Error checking Instagram",
+        type: "error",
+      });
+    }
+  };
+
 
 
   useEffect(() => {
@@ -615,9 +684,10 @@ const page = () => {
       if (emailTypingTimer) clearTimeout(emailTypingTimer);
       if (passwordTypingTimer) clearTimeout(passwordTypingTimer);
       if (confirmPasswordTypingTimer) clearTimeout(confirmPasswordTypingTimer);
-      if (websiteTypingTimer) clearTimeout(websiteTypingTimer); // Add this
+      if (websiteTypingTimer) clearTimeout(websiteTypingTimer);
+      if (instagramTypingTimer) clearTimeout(instagramTypingTimer);
     };
-  }, [emailTypingTimer, passwordTypingTimer, websiteTypingTimer]); // Add websiteTypingTimer
+  }, [emailTypingTimer, passwordTypingTimer, websiteTypingTimer, instagramTypingTimer]);
 
   const validateBusinessEmail = async (email) => {
     if (!email) {
@@ -893,25 +963,8 @@ const page = () => {
       setFormData((prev) => ({ ...prev, [field]: value }));
     }
 
-    // Validation logic with debounce
-    if (field === "email") {
-      // Hide error while typing
-      setShowEmailError(false);
 
-      // Clear existing timer
-      if (emailTypingTimer) {
-        clearTimeout(emailTypingTimer);
-      }
-
-      // Set new timer - show error after user stops typing for 800ms
-      const newTimer = setTimeout(() => {
-        validateBusinessEmail(value);
-        setShowEmailError(true);
-      }, 800);
-
-      setEmailTypingTimer(newTimer);
-    } else if (field === "password") {
-
+    if (field === "password") {
       // Hide error while typing
       setShowPasswordError(false);
 
@@ -927,10 +980,18 @@ const page = () => {
         if (authMode === "signup" && confirmPassword) {
           validateConfirmPassword(value, confirmPassword);
         }
-      }, 800);
+
+        // MOVE THIS INSIDE the setTimeout callback
+        if (formData.email) {
+          validateBusinessEmail(formData.email);
+          setShowEmailError(true);
+        }
+      }, 800); // ← Email validation now happens AFTER 800ms delay
 
       setPasswordTypingTimer(newTimer);
-    } else if (field === "website") {
+    }
+
+    else if (field === "website") {
       // ADD THIS NEW BLOCK
       // Hide error while typing
       setShowWebsiteError(false);
@@ -948,8 +1009,22 @@ const page = () => {
 
       setWebsiteTypingTimer(newTimer);
     }
-  };
 
+    else if (field === "instagram") {
+      setFormData((prev) => ({ ...prev, [field]: value }));
+
+      setShowInstagramError(false);
+
+      if (instagramTypingTimer) clearTimeout(instagramTypingTimer);
+
+      const newTimer = setTimeout(() => {
+        validateInstagram(value); // pass value, not undefined
+        setShowInstagramError(true);
+      }, 800);
+
+      setInstagramTypingTimer(newTimer);
+    }
+  };
 
   const goToNextStep = async (stepCompleted = null) => {
     const currentIndex = steps.indexOf(currentStep);
@@ -1117,9 +1192,9 @@ const page = () => {
           const { accessToken, refreshToken, user } = response.data;
 
           console.log(user)
-          
+
           setUser(user);
-          
+
           if (typeof window !== "undefined" && accessToken && refreshToken) {
             localStorage.setItem("accessToken", accessToken);
             localStorage.setItem("refreshToken", refreshToken);
@@ -1904,6 +1979,7 @@ const page = () => {
                       onChange={(e) =>
                         handleInputChange("password", e.target.value)
                       }
+                      onFocus={handlePasswordFieldFocus}
                       disabled={isLoading}
                       className={`w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent ${isLoading ? "bg-gray-100 cursor-not-allowed" : ""
                         }`}
@@ -1981,10 +2057,11 @@ const page = () => {
                   onBack={goToPrevStep}
                   canContinue={
                     emailValidation.isValid &&
-                    passwordValidation.isValid &&
+                    formData.password.trim().length > 0 && // Password must not be empty for both modes
                     (authMode === "signup"
-                      ? confirmPasswordValidation.isValid
-                      : true)
+                      ? passwordValidation.isValid && confirmPasswordValidation.isValid // Signup: strong password + match
+                      : true // Login: just needs non-empty password
+                    )
                   }
                 />
               </form>
@@ -2004,7 +2081,7 @@ const page = () => {
 
                     }
                   >
-                    Log in here
+                    Sign in here
                   </span>
                 </div>
               ) : (
@@ -2241,11 +2318,25 @@ const page = () => {
                 onBack={goToPrevStep}
                 canContinue={formData.phone.length > 8}
               />
-              <p className="text-[10px] [@media(min-width:360px)]:text-[10px] text-gray-600 whitespace-nowrap">
-                This is required to access main features, See{" "}
-                <span className="underline" onClick={() => openHelpCenter("terms")}>Terms</span> and{" "}
-                <span className="underline" onClick={() => openHelpCenter("privacy")}>Policy</span> for details.
-              </p>
+              <div className="text-center mx-[-20px]">
+                <p className="text-[8px] [@media(min-width:360px)]:text-[10px] text-gray-600">
+                  You acknowledge that you understand and agree to the{" "}
+                  <span
+                    onClick={() => openHelpCenter("terms")}
+                    className="underline"
+                  >
+                    {" "}
+                    Terms
+                  </span>{" "}
+                  and{" "}
+                  <span
+                    onClick={() => openHelpCenter("privacy")}
+                    className="underline"
+                  >
+                    Policy
+                  </span>
+                </p>
+              </div>
 
             </form>
           </div>
@@ -2378,27 +2469,46 @@ const page = () => {
                     onChange={(e) =>
                       handleInputChange("instagram", e.target.value)
                     }
-                    className="w-full pl-12 pr-4 py-3 text-gray-800 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
+                    className={`w-full pl-12 pr-4 py-3 text-gray-800 border rounded-lg focus:ring-2 focus:ring-black focus:border-transparent ${instagramValidation.type === "error" && showInstagramError
+                      ? "border-red-300"
+                      : instagramValidation.type === "success" && showInstagramError
+                        ? "border-green-300"
+                        : "border-gray-300"
+                      }`}
                     placeholder="@yourbusiness"
                     required
                   />
-                  {formData.instagramAccountId && (
+                  {instagramValidation.type === "success" && showInstagramError && (
+                    <CheckCircle
+                      className="absolute right-3 top-3 text-green-500"
+                      size={20}
+                    />
+                  )}
+                  {/* {formData.instagramAccountId && (
                     <div className="absolute right-3 top-3">
                       <CheckCircle className="text-green-500" size={20} />
                     </div>
-                  )}
+                  )} */}
                 </div>
                 {formData.instagramAccountId && (
                   <p className="mt-2 text-sm text-green-600">
                     ✓ Connected to Instagram
                   </p>
                 )}
+                <ValidationMessage
+                  validation={instagramValidation}
+                  show={showInstagramError}
+                />
               </div>
 
               <NavigationButtons
                 onNext={() => handleSubmit(event)}
                 onBack={goToPrevStep}
-                canContinue={formData.instagram.trim().length > 0}
+                canContinue={
+                  instagramValidation.type === "success" &&
+                  instagramValidation.isValid === true
+                }
+
               />
             </form>
           </div>
@@ -2462,10 +2572,10 @@ const page = () => {
                 <h1 className="text-3xl font-bold text-gray-900">
                   Reset Password
                 </h1>
-                <p className="text-gray-600 mt-2">
+                {/* <p className="text-gray-600 mt-2">
                   Enter your email address and we'll send you a link to reset
                   your password
-                </p>
+                </p> */}
               </div>
 
               <form onSubmit={handleResetPassword} className="space-y-6">
@@ -2528,8 +2638,8 @@ const page = () => {
             </div>
 
             <div className="text-center mx-4">
-              <p className="mt-3 text-[12px] text-gray-600">
-                Remember your password?
+              <p className="mt-3 text-center text-sm">
+                Remember your password?{" "}
                 <button
                   onClick={() => {
                     setCurrentStep("email-login");
@@ -2537,7 +2647,7 @@ const page = () => {
                       "/login?flow=creative&step=login-choice&mode=login"
                     );
                   }}
-                  className="text-blue-600 hover:text-blue-800 ml-1"
+                  className="font-semibold"
                 >
                   Sign in here
                 </button>
@@ -2548,6 +2658,13 @@ const page = () => {
 
       default:
         return null;
+    }
+  };
+
+  const handlePasswordFieldFocus = () => {
+    if (formData.email) {
+      validateBusinessEmail(formData.email);
+      setShowEmailError(true);
     }
   };
 

@@ -35,9 +35,9 @@ export const metadata: Metadata = {
     type: "website",
     images: [
       {
-        url: "/sms-icon.jpg",
-        width: 1200,
-        height: 630,
+        url: "https://cunocovo.com/android-chrome-512x512.png",
+        width: 512,
+        height: 512,
         alt: "CUNO COVO",
       },
     ],
@@ -49,7 +49,14 @@ export const metadata: Metadata = {
     title: "CUNO COVO",
     description:
       "CUNO COVO is a platform for wedding photographers, videographers, florists, and planners to share perspectives anonymously-soon helping couples discover aligned wedding talent.",
-    images: ["/sms-icon.jpg"],
+    images: [
+      {
+        url: "https://cunocovo.com/android-chrome-512x512.png",
+        width: 512,
+        height: 512,
+        alt: "CUNO COVO",
+      },
+    ]
   },
 
   // Icons - proper format for Google search results
@@ -113,6 +120,13 @@ export default function RootLayout({
         <meta name="msapplication-TileColor" content="#000000" />
         <meta name="msapplication-TileImage" content="/sms-icon.jpg" />
 
+        <meta property="og:image" content="https://cunocovo.com/android-chrome-512x512.png" />
+        <meta property="og:image:width" content="512" />
+        <meta property="og:image:height" content="512" />
+        <meta property="og:title" content="CUNO COVO" />
+        <meta property="og:description" content="CUNO COVO is a platform..." />
+
+
         {/* Preload critical fonts */}
         <link
           rel="preload"
@@ -135,10 +149,10 @@ export default function RootLayout({
           clientId={`${process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID}`}
         >
           <DesktopRestriction>
-              <ScrollVisibilityProvider>
-                {children}
-              </ScrollVisibilityProvider>
-            
+            <ScrollVisibilityProvider>
+              {children}
+            </ScrollVisibilityProvider>
+
             <div id="modal-root"></div>
             <HelpCenter />
           </DesktopRestriction>

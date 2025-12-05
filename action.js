@@ -61,126 +61,11 @@ export const refreshTokenServer = async () => {
   }
 };
 
-/**
- * Make authenticated server-side request with automatic retry on 401
- */
-// const makeAuthenticatedRequest = async (url, options = {}) => {
-//   const cookieStore = await cookies();
-
-//   try {
-//     const response = await axios({
-//       url,
-//       headers: {
-//         Cookie: cookieStore.toString(),
-//         "Content-Type": "application/json",
-//         ...options.headers,
-//       },
-//       timeout: 30000,
-//       withCredentials: true,
-//       ...options,
-//     });
-
-//     return { success: true, data: response.data };
-//   } catch (error) {
-//     if (error.response?.status === 401 && !options.skipRefresh) {
-//       console.log("Token expired, attempting refresh...");
-
-//       const refreshResult = await refreshTokenServer();
-
-//       if (refreshResult.success) {
-//         try {
-//           const retryResponse = await axios({
-//             url,
-//             headers: {
-//               Cookie: (await cookies()).toString(),
-//               "Content-Type": "application/json",
-//               ...options.headers,
-//             },
-//             timeout: 30000,
-//             withCredentials: true,
-//             ...options,
-//             skipRefresh: true,
-//           });
-
-//           return { success: true, data: retryResponse.data };
-//         } catch (retryError) {
-//           throw retryError;
-//         }
-//       } else {
-//         throw error;
-//       }
-//     } else {
-//       throw error;
-//     }
-//   }
-// };
-
-// ==========================================
-// AUTHENTICATION ACTIONS
-// ==========================================
-
-
-// /**
-//  * Make authenticated server-side request with automatic retry on 401
-//  */
-// const makeAuthenticatedRequest = async (url, options = {}) => {
-//   const cookieStore = await cookies();
-//   try {
-//     const response = await axiosInstance({
-//       url,
-//       method: options.method || "GET",
-//       data: options.data || {},
-//       headers: {
-//         Cookie: cookieStore.toString(),
-//         "Content-Type": "application/json",
-//         ...options.headers,
-//       },
-//       timeout: 30000,
-//       withCredentials: true,
-//       ...options,
-//     });
-//     return { success: true, data: response.data };
-//   } catch (error) {
-//     // If token expired, retry after refresh
-//     if (error.response?.status === 401 && !options.skipRefresh) {
-//       console.log("Token expired, attempting refresh...");
-
-//       const refreshResult = await refreshTokenServer?.();
-//       if (refreshResult?.success) {
-//         try {
-//           const retryResponse = await axiosInstance({
-//             url,
-//             method: options.method || "GET",
-//             data: options.data || {},
-//             headers: {
-//               Cookie: (await cookies()).toString(),
-//               "Content-Type": "application/json",
-//               ...options.headers,
-//             },
-//             timeout: 30000,
-//             withCredentials: true,
-//             ...options,
-//             skipRefresh: true,
-//           });
-//           return { success: true, data: retryResponse.data };
-//         } catch (retryError) {
-//           throw retryError;
-//         }
-//       } else {
-//         throw error;
-//       }
-//     } else {
-//       throw error;
-//     }
-//   }
-// };
-
-
 const makeAuthenticatedRequest = async (url, options = {}) => {
   const cookieStore = await cookies();
 
   const sendRequest = async (accessToken) => {
-    const headers  = {
+    const headers = {
       "Content-Type": "application/json",
       ...options.headers,
     };
@@ -791,6 +676,26 @@ export const getFeed = async (
   sortBy = "newest"
 ) => {
   try {
+
+    // Check if accessing protected category without auth
+    const protectedCategories = ["New", "Bookmark", "My Posts", "Chatrooms"];
+
+    if (protectedCategories.includes(category)) {
+      const cookieStore = await cookies();
+      const token = cookieStore.get("token");
+
+      if (!token) {
+        console.log(`getFeed: Blocked unauthenticated access to ${category}`);
+        return {
+          success: false,
+          posts: [],
+          pagination: { hasMore: false },
+          error: "Authentication required",
+          requiresAuth: true, // FLAG for auth
+          redirect: "/feed/popular", //  redirect
+        };
+      }
+    }
     const params = {
       category: String(category || "New"),
       page: Number(page) || 1,
@@ -1777,3 +1682,28 @@ export const refreshAccessToken = async () => {
   );
   return refreshTokenServer();
 };
+
+
+export async function checkInstagramExists(instagram) {
+  try {
+    const response = await makeAuthenticatedRequest(
+      "/api/auth/check-instagram",
+      {
+        method: "POST",
+        data: { instagram },
+        authRequired: true,
+      }
+    );
+
+    return response.data;
+  } catch (error) {
+    console.error("Instagram check failed:", error);
+    return {
+      success: false,
+      message:
+        error.response?.data?.message ||
+        "Failed to check Instagram availability",
+    };
+  }
+}
+

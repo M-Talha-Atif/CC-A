@@ -389,8 +389,7 @@ const HomePage = () => {
             {activatingAnon ? "Activating..." : "Join Anonymous"}
           </button>
           <p className="text-black/80 text-sm leading-relaxed">
-            Use our fully anonymous chat feature and post, post, reply in
-            chatrooms with other creatives
+            Post, like, and chat with full privacy.
           </p>
         </div>
 
@@ -411,7 +410,7 @@ const HomePage = () => {
           </div>
 
           <div className="text-left space-y-2 my-3">
-            <p className="">Refer creatives using your code</p>
+            <p className="">Refer Creatives using your code</p>
             <button
               onClick={handleShare}
               disabled={!user?.referralCode}
@@ -425,15 +424,15 @@ const HomePage = () => {
           </div>
 
           <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl text-left mt-3 p-4">
-            <h4 className="font-semibold text-black mb-2">Instructions</h4>
+            <h4 className="font-semibold text-black mb-2">Points System</h4>
             <ul className="text-sm text-black/70 space-y-1">
-              <li>1st referral earn 1 point</li>
-              <li>2nd referral earn 1.5 point</li>
-              <li>3rd referral earn 2 point</li>
+              <li>Earn 1.5 points for your first referral</li>
+              <li>Earn 2 points for your second referral</li>
+              <li>Earn 2.5 points for your third referral...</li>
+              <li>Maximum of 8 referral</li>
             </ul>
             <p className="mt-2 text-sm text-black/70">
-              Move up the ranking with more points to gain earlier access to new
-              features
+             Top-tier point holders unlock early access to new features.
             </p>
           </div>
         </div>

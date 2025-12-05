@@ -141,6 +141,61 @@ const FeedPage = ({ params = {}, singlePostMode = false, postId = null }) => {
     all: SeeAllIcon,
   };
 
+
+  // Handle single post mode - redirect on refresh/re-entry to reset feed
+  useEffect(() => {
+    if (!singlePostMode || !postId) return;
+
+    const storageKey = `seen_${postId}`;
+    const hasSeenPost = sessionStorage.getItem(storageKey);
+
+    console.log("🔍 Single post mode check:", {
+      postId,
+      hasSeenPost,
+      singlePostMode
+    });
+
+    if (hasSeenPost) {
+      // Already seen this post, redirect to creatives feed to reset
+      console.log("🔄 Post already viewed, redirecting to /feed/creatives to reset feed");
+      sessionStorage.removeItem(storageKey); // Clean up
+      router.replace("/feed/creatives");
+      return;
+    }
+
+    // First time seeing this post, mark it as seen
+    sessionStorage.setItem(storageKey, "true");
+    console.log("✅ First view of post, marking as seen");
+
+  }, [singlePostMode, postId, router]);
+
+  // Optional: Clean up on unmount (allows revisit after navigating away)
+  useEffect(() => {
+    return () => {
+      if (postId && singlePostMode) {
+        // Clear the flag when component unmounts
+        // This allows the user to visit the post again if they navigate away first
+        sessionStorage.removeItem(`seen_${postId}`);
+      }
+    };
+  }, [postId, singlePostMode]);
+
+  useEffect(() => {
+    if (!hasHydrated) return;
+
+    const urlCategory = routeParams.category;
+    const protectedCategories = ["new", "bookmark", "my-posts", "chatrooms"];
+
+    if (protectedCategories.includes(urlCategory) && !isAuthenticated) {
+      console.log(`⚠️ FeedPage: Unauthorized access to ${urlCategory}, redirecting to popular`);
+      router.replace("/feed/popular");
+    }
+  }, [hasHydrated, isAuthenticated, routeParams.category, router]);
+
+
+
+
+
   // 3. Update getCategoriesForUser array
   const getCategoriesForUser = useMemo(() => {
     if (!isAuthenticated) {
@@ -241,7 +296,6 @@ const FeedPage = ({ params = {}, singlePostMode = false, postId = null }) => {
   const [singlePostError, setSinglePostError] = useState(null);
 
   const POSTS_PER_PAGE = 10;
-  // useEffect(() => {
   //   let rafId;
 
   //   const handleScroll = () => {
@@ -1553,7 +1607,7 @@ const FeedPage = ({ params = {}, singlePostMode = false, postId = null }) => {
 
       {/* Feed Content */}
       <div
-        className={`max-w-[400px] md:max-w-2xl mx-auto px-4 pb-0 ${selectedCategory === "New" ? "pt-[140px]" : "pt-[90px]" // Increased padding to account for headers
+        className={`max-w-[400px] md:max-w-2xl mx-auto px-4 pb-0 ${(selectedCategory === "New" || (selectedCategory === "Popular" && isAuthenticated)) ? "pt-[140px]" : "pt-[90px]" // Increased padding to account for headers
           }`}
       >
         {singlePostMode ? (
@@ -1767,7 +1821,7 @@ const FeedPage = ({ params = {}, singlePostMode = false, postId = null }) => {
           style={{
             pointerEvents: isVisible ? "auto" : "none",
           }}
-          className="fixed cursor-pointer bottom-6 right-6 w-14 h-14 flex items-center justify-center shadow-lg rounded-4xl transition-all hover:scale-105"
+          className="fixed cursor-pointer bottom-6 right-6 w-14 h-14 flex items-center justify-center shadow-lg rounded-4xl"
         >
           <PostingIcon size={56} />
         </motion.button>

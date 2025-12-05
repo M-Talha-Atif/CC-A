@@ -9,9 +9,11 @@ import {
   MessageCircle,
 } from "lucide-react";
 import Portal from "@/components/Portal";
+import { useParams } from "next/navigation";
 
 const SharePreview = ({ post, onClose }) => {
   const [toast, setToast] = useState(null);
+  const routeParams = useParams(); //  to get current URL params
 
   const showToast = (message, type = "success") => {
     setToast({ message, type });
@@ -56,7 +58,15 @@ const SharePreview = ({ post, onClose }) => {
   };
 
   const getShareUrl = () => {
-    // Map categories to URL-friendly format
+    // Use the current URL category instead of post's category
+    const currentUrlCategory = routeParams.category;
+
+    // If we have a URL category, use it directly (it's already in the correct format)
+    if (currentUrlCategory) {
+      return `${window.location.origin}/feed/${currentUrlCategory}/${post.id}`;
+    }
+
+    // Fallback: If no URL category (shouldn't happen), use post's first category
     const categoryToUrlMapping = {
       New: "new",
       Popular: "popular",
@@ -65,16 +75,13 @@ const SharePreview = ({ post, onClose }) => {
       Videography: "videographer",
       Florist: "florist",
       Planner: "planner",
-      "Posts & Replies": "posts-replies",
+      "My Posts": "my-posts",
       Bookmark: "bookmark",
       Chatrooms: "chatrooms",
     };
 
-    // Get the primary category (first one) and convert to URL format
     const primaryCategory = post.categories[0];
     const urlCategory = categoryToUrlMapping[primaryCategory] || "couples";
-
-    // Use the new feed URL structure for sharing
     return `${window.location.origin}/feed/${urlCategory}/${post.id}`;
   };
 
@@ -236,9 +243,8 @@ const SharePreview = ({ post, onClose }) => {
         {/* Toast */}
         {toast && (
           <div
-            className={`fixed top-4 right-4 px-4 py-2 rounded-lg text-white z-60 ${
-              toast.type === "success" ? "bg-green-500" : "bg-red-500"
-            }`}
+            className={`fixed top-4 right-4 px-4 py-2 rounded-lg text-white z-60 ${toast.type === "success" ? "bg-green-500" : "bg-red-500"
+              }`}
           >
             {toast.message}
           </div>
@@ -299,13 +305,12 @@ const SharePreview = ({ post, onClose }) => {
                         <div className="flex-1 flex justify-center">
                           <span
                             className={`text-sm text-gray-700 py-1 px-3 w-[200px]
-                             text-center rounded-full ${
-                               hasVoted
-                                 ? isUserChoice
-                                   ? "bg-blue-200 text-blue-800 font-semibold"
-                                   : "bg-gray-200 opacity-75"
-                                 : "bg-gray-200"
-                             }`}
+                             text-center rounded-full ${hasVoted
+                                ? isUserChoice
+                                  ? "bg-blue-200 text-blue-800 font-semibold"
+                                  : "bg-gray-200 opacity-75"
+                                : "bg-gray-200"
+                              }`}
                             style={{
                               wordBreak: "break-word",
                               overflowWrap: "break-word",

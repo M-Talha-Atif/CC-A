@@ -49,7 +49,7 @@ export function ScrollVisibilityProvider({ children }) {
     const isAtBottom = scrollY + clientHeight >= scrollHeight - bottomThreshold;
 
     // Update top state
-    const newIsAtTop = scrollY < 50;
+    const newIsAtTop = scrollY < 20;
     setIsAtTop(newIsAtTop);
 
     // First-time initialization

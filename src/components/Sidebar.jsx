@@ -38,7 +38,7 @@ const Sidebar = ({
 }) => {
   const router = useRouter();
   const [points, setPoints] = useState(totalPoints || 0);
-  const { openHelpCenter } = useHelpCenterStore();
+  const { openHelpCenter, isOpen } = useHelpCenterStore();
   const [rank, setRank] = useState(user.rank || 0);
   const [isLoadingPoints, setIsLoadingPoints] = useState(false);
   const [isLoadingRank, setIsLoadingRank] = useState(false);
@@ -54,7 +54,7 @@ const Sidebar = ({
 
   // Scroll locking effect
   useEffect(() => {
-    if (sidebarOpen) {
+    if (sidebarOpen && !isOpen) {
       // Store current scroll position
       scrollYRef.current = window.scrollY;
 
@@ -110,7 +110,7 @@ const Sidebar = ({
         }
       };
     }
-  }, [sidebarOpen]);
+  }, [sidebarOpen, isOpen]);
 
   // Update points when totalPoints prop changes
   useEffect(() => {
@@ -471,7 +471,7 @@ const Sidebar = ({
                   </div>
 
                   <div className="flex flex-col items-left pl-4 ml-8">
-                    Points available :{" "}
+                    Points :{" "}
                     {isLoadingPoints || isLoading ? "..." : points}
                     <p className="text-xs ml-2">
                       Rank : {isLoadingRank || isLoading ? "..." : rank}
@@ -493,20 +493,19 @@ const Sidebar = ({
                           className="absolute left-0 top-6 z-60 w-50 p-4 px-2  bg-white border border-gray-200 
                         rounded-lg shadow-lg text-[8px] text-black/80 leading-relaxed"
                         >
-                          <div className="space-y-2">
+                          <div className="space-y-2 text-[9.1px]">
                             <p className="">
-                              Share your referral code to other Creatives and
-                              earn points once they are onboarded to CC.
+                              Share your referral code with other Creatives and
+                              earn points when they sign up!
                             </p>
                             <div className="space-y-1">
-                              <p>1st referral earn 1 point</p>
-                              <p>2nd referral earn 1.5 points</p>
-                              <p>3rd referral earn 2 points...</p>
-                              <p className="">(up to 8 referrals max)</p>
+                              <p>Earn 1.5 points for your first referral</p>
+                              <p>Earn 2 points for your second referral</p>
+                              <p>Earn 2.5 points for your third referral...</p>
+                              <p className="">*Maximum of 8 referrals max</p>
                             </div>
                             <p className="italic text-black/60">
-                              More details & features for the use case of points
-                              coming soon
+                              The more points you earn, the more features you unlock.
                             </p>
                           </div>
 

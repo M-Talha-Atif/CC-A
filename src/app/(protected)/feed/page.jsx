@@ -2,11 +2,26 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import useUserStore from "../../../store/userStore";
 
 const FeedRedirect = () => {
   const router = useRouter();
+   const routeParams = useParams();
   const { isAuthenticated, hasHydrated, currentFeedCategory } = useUserStore();
+  console.log("At Feed Page")
+
+  useEffect(() => {
+    if (!hasHydrated) return;
+
+    const urlCategory = routeParams.category;
+    const protectedCategories = ["new", "bookmark", "my-posts", "chatrooms"];
+
+    if (protectedCategories.includes(urlCategory) && !isAuthenticated) {
+      console.log(`⚠️ FeedPage: Unauthorized access to ${urlCategory}, redirecting to popular`);
+      router.replace("/feed/popular");
+    }
+  }, [hasHydrated, isAuthenticated, routeParams.category, router]);
 
   useEffect(() => {
     if (!hasHydrated) return;
