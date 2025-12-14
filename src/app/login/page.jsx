@@ -2,15 +2,11 @@
 import React, { useEffect, useRef, useState } from "react";
 import {
   ChevronRight,
-  ArrowLeft,
   Camera,
   Globe,
   Instagram,
-  Phone,
   Mail,
   User,
-  Building,
-  ArrowRight,
   AlertCircle,
   CheckCircle,
   ChevronLeft,
@@ -20,31 +16,19 @@ import {
 import {
   checkUserStatus,
   completeProfile,
-  exchangeInstagramToken,
   forgotPassword,
   getOnboardingProgress,
-  googleLoginCreative,
-  googleLoginCouple,
   handleGoogleToken,
   register,
   storePhoneNumber,
   updateOnboardingProgress,
-  verifyOTP,
-  verifyPhone,
   verifyReferralCode,
   sendVerificationEmail,
-  verifyEmailToken,
   resendVerificationEmail,
   checkEmailVerificationStatus,
-  checkEmailExists,
-  checkInstagramExists,
 } from "../../../action";
-import axios from "axios";
-import { useGoogleLogin } from "@react-oauth/google";
 import useUserStore from "@/store/userStore";
-import Logout from "../../components/Logout";
 import { toast, Toaster } from "sonner";
-import Toast from "../../components/Toast";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   loadFromStorage,
@@ -53,8 +37,20 @@ import {
 } from "../../utils/saveToLocal";
 import AuthLayout from "./components/AuthLayout";
 import useHelpCenterStore from "@/hooks/useHelpCenter";
+import { useEmailValidation } from './hooks/useEmailValidation';
+import { usePasswordValidation } from './hooks/usePasswordValidation';
+import { useConfirmPasswordValidation } from './hooks/useConfirmPasswordValidation';
+import { useWebsiteValidation } from './hooks/useWebsiteValidation';
+import { useInstagramValidation } from './hooks/useInstagramValidation';
+import ValidationMessage from './components/ValidationMessage';
+import NavigationButtons from './components/NavigationButtons';
+import PasswordRequirements from './components/PasswordRequirements';
+import LoadingOverlay from './components/LoadingOverlay';
+import LoadingFallback from './components/LoadingFallback';
+import TermsFooter from './components/TermsFooter';
+import InputField from './components/InputField';
+import PasswordToggleButton from './components/PasswordToggleButton'
 
-let tokenClient = null;
 
 const page = () => {
   const router = useRouter();
@@ -76,165 +72,69 @@ const page = () => {
     otpCode: "",
     resetEmail: "",
   });
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [confirmPasswordValidation, setConfirmPasswordValidation] = useState({
-    isValid: false,
-    message: "",
-    type: "",
-  });
-  const [confirmPasswordTypingTimer, setConfirmPasswordTypingTimer] =
-    useState(null);
-  const [showConfirmPasswordError, setShowConfirmPasswordError] =
-    useState(false);
+
   const [referralCompleted, setReferralCompleted] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [isHydrated, setIsHydrated] = useState(false);
-  const { user, isAuthenticated, setUser } = useUserStore();
-
-  // Validation states
-  const [emailValidation, setEmailValidation] = useState({
-    isValid: false,
-    message: "",
-    type: "", // 'success', 'warning', 'error'
-  });
-
-  const [websiteValidation, setWebsiteValidation] = useState({
-    isValid: false,
-    message: "",
-    type: "",
-  });
-
-  const [passwordValidation, setPasswordValidation] = useState({
-    isValid: false,
-    message: "",
-    requirements: {
-      length: false,
-      uppercase: false,
-      lowercase: false,
-      number: false,
-    },
-  });
+  const { user, isAuthenticated, setUser } = useUserStore();;
 
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState("");
   const [referralError, setReferralError] = useState("");
-  const [otpTimer, setOtpTimer] = useState(60);
   const [emailVerificationSent, setEmailVerificationSent] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
   const [verificationStatus, setVerificationStatus] = useState(null);
-  const [showEmailInfo, setShowEmailInfo] = useState(false);
 
   const [initializing, setInitializing] = useState(true);
-  const [emailTypingTimer, setEmailTypingTimer] = useState(null);
-  const [passwordTypingTimer, setPasswordTypingTimer] = useState(null);
-  const [websiteTypingTimer, setWebsiteTypingTimer] = useState(null);
-  const [showEmailError, setShowEmailError] = useState(false);
-  const [showPasswordError, setShowPasswordError] = useState(false);
-  const [showWebsiteError, setShowWebsiteError] = useState(false);
 
-  const [instagramValidation, setInstagramValidation] = useState({
-    isValid: false,
-    message: "",
-    type: "",
-  });
-  const [instagramTypingTimer, setInstagramTypingTimer] = useState(null);
-  const [showInstagramError, setShowInstagramError] = useState(false);
-  const instagramRequestRef = useRef(0);  // tracks latest request
+  const {
+    emailValidation,
+    showError: showEmailError,
+    handleEmailChange,
+    validateImmediately: validateEmailImmediately,
+    resetValidation,
+  } = useEmailValidation(authMode);
 
+  const {
+    websiteValidation,
+    showError: showWebsiteError,
+    handleWebsiteChange,
+    validateImmediately: validateWebsiteImmediately,
+    resetValidation: resetWebsiteValidation,
+  } = useWebsiteValidation(formData.email || user?.email);
 
-  const validateInstagram = async (input) => {
-    const clean = input
+  const {
+    instagramValidation,
+    showError: showInstagramError,
+    handleInstagramChange,
+    validateImmediately: validateInstagramImmediately,
+    resetValidation: resetInstagramValidation,
+  } = useInstagramValidation();
 
-    // Empty field = reset UI
-    if (!clean) {
-      setInstagramValidation({
-        isValid: false,
-        message: "",
-        type: "",
-      });
-      return;
-    }
+  const {
+    passwordValidation,
+    showError: showPasswordError,
+    handlePasswordChange,
+    validateImmediately: validatePasswordImmediately,
+    resetValidation: resetPasswordValidation,
+  } = usePasswordValidation();
 
-    // Track request ID
-    const requestId = ++instagramRequestRef.current;
-
-    try {
-      setInstagramValidation({
-        isValid: false,
-        message: "",
-        type: "loading",
-      });
-
-      const response = await checkInstagramExists(clean);
-
-      // Ignore old responses
-      if (requestId !== instagramRequestRef.current) return;
-
-      if (!response.success) {
-        setInstagramValidation({
-          isValid: false,
-          message: response.message,
-          type: "error",
-        });
-        return;
-      }
-
-      if (response.exists) {
-        setInstagramValidation({
-          isValid: false,
-          message: "Instagram already in use",
-          type: "error",
-        });
-      } else {
-        setInstagramValidation({
-          isValid: true,
-          message: "Instagram handle available",
-          type: "success",
-        });
-      }
-    } catch (err) {
-      setInstagramValidation({
-        isValid: false,
-        message: "Error checking Instagram",
-        type: "error",
-      });
-    }
-  };
-
-
+  const {
+    confirmPasswordValidation,
+    showError: showConfirmPasswordError,
+    handleConfirmPasswordChange,
+    validateImmediately: validateConfirmPasswordImmediately,
+    resetValidation: resetConfirmPasswordValidation,
+  } = useConfirmPasswordValidation();
 
   useEffect(() => {
     // Reset all validation states when auth mode changes
-    setEmailValidation({
-      isValid: false,
-      message: "",
-      type: "",
-    });
-    setPasswordValidation({
-      isValid: false,
-      message: "",
-      requirements: {
-        length: false,
-        uppercase: false,
-        lowercase: false,
-        number: false,
-      },
-    });
-    setConfirmPasswordValidation({
-      isValid: false,
-      message: "",
-      type: "",
-    });
+    resetValidation()
+    resetWebsiteValidation();
+    resetInstagramValidation();
+    resetPasswordValidation();
+    resetConfirmPasswordValidation();
 
-    // Clear any visible error states
-    setShowEmailError(false);
-    setShowPasswordError(false);
-    setShowConfirmPasswordError(false);
-
-    // Clear any existing timers
-    if (emailTypingTimer) clearTimeout(emailTypingTimer);
-    if (passwordTypingTimer) clearTimeout(passwordTypingTimer);
-    if (confirmPasswordTypingTimer) clearTimeout(confirmPasswordTypingTimer);
   }, [authMode]);
 
   useEffect(() => {
@@ -244,16 +144,11 @@ const page = () => {
     const step = searchParams.get("step");
     const mode = searchParams.get("mode");
 
-    if (flow === "creative" && step === "login-choice") {
+    if (flow === "creative" && step === "auth" && mode) {
       setUserType("creative");
-      setCurrentStep("login-choice");
+      setCurrentStep("auth");
     }
 
-    // If mode is specified in URL, we're on email-login step
-    if (flow === "creative" && step === "email-login" && mode) {
-      setUserType("creative");
-      setCurrentStep("email-login");
-    }
   }, [isHydrated, searchParams]);
 
   useEffect(() => {
@@ -401,21 +296,14 @@ const page = () => {
 
   const handleOnboardingBack = () => {
     switch (currentStep) {
-      case "login-choice":
-        if (window.history.length > 1) {
-          router.back();
-        }
-        break;
-      case "email-choice":
-        setCurrentStep("landing");
-        break;
 
-      case "email-login":
-        setCurrentStep("login-choice");
+      //  UPDATE "auth" case as no longer need continue page for me
+      case "auth":
+        router.push("/login"); // Go back to landing
         break;
 
       case "email-verification":
-        setCurrentStep("email-login");
+        setCurrentStep("auth");
         break;
 
       case "phone-number":
@@ -426,31 +314,23 @@ const page = () => {
         setCurrentStep("phone-number");
         break;
 
-      // case "business-name":
-      //   setCurrentStep("referral-code");
-      //   break;
-
       case "business-website":
         setCurrentStep("referral-code");
         break;
 
       case "business-instagram":
-        // Go back to business-website
         setCurrentStep("business-website");
         break;
 
       case "creative-domain":
-        // Go back to business-instagram
         setCurrentStep("business-instagram");
         break;
 
       case "landing":
       default:
-        // If on landing step or any other step, go to previous page
         if (window.history.length > 1) {
           router.back();
         } else {
-          // Fallback if no history
           router.push("/");
         }
         break;
@@ -486,7 +366,7 @@ const page = () => {
     const hasCompletedOnboarding = user.profile?.onboardingCompleted;
     const hasVerifiedEmail = user.emailVerified;
 
-    const isAtEntryStep = currentStep === "email-login";
+    const isAtEntryStep = currentStep === "auth";
 
     if (hasCompletedOnboarding && hasVerifiedEmail && isAtEntryStep) {
       router.push("/feed");
@@ -551,65 +431,6 @@ const page = () => {
     }
   };
 
-  const validatePassword = (password) => {
-    if (!password) {
-      setPasswordValidation({
-        isValid: false,
-        message: "",
-        requirements: {
-          length: false,
-          uppercase: false,
-          lowercase: false,
-          number: false,
-        },
-      });
-      return;
-    }
-
-    const requirements = {
-      length: password.length >= 8,
-      uppercase: /[A-Z]/.test(password),
-      lowercase: /[a-z]/.test(password),
-      number: /\d/.test(password),
-    };
-
-    const isValid = Object.values(requirements).every((req) => req);
-
-    setPasswordValidation({
-      isValid,
-      message: isValid
-        ? "Password meets all requirements"
-        : "Password requirements not met",
-      requirements,
-    });
-  };
-
-  const validateConfirmPassword = (password, confirmPwd) => {
-    if (!confirmPwd) {
-      setConfirmPasswordValidation({
-        isValid: false,
-        message: "",
-        type: "",
-      });
-      return;
-    }
-
-    if (password !== confirmPwd) {
-      setConfirmPasswordValidation({
-        isValid: false,
-        message: "Passwords do not match",
-        type: "error",
-      });
-      return;
-    }
-
-    setConfirmPasswordValidation({
-      isValid: true,
-      message: "Passwords match",
-      type: "success",
-    });
-  };
-
   const formatPhoneNumber = (value) => {
     // Remove all non-digit characters
     const cleaned = value.replace(/\D/g, "");
@@ -629,9 +450,8 @@ const page = () => {
 
   const steps = [
     // "landing",
-    "email-choice",
-    "login-choice",
-    "email-login",
+    "landing",
+    "auth", // Single auth step (login or signup)
     "email-verification",
     "phone-number",
     "referral-code",
@@ -640,389 +460,36 @@ const page = () => {
     "creative-domain",
   ];
 
-  useEffect(() => {
-    const script = document.createElement("script");
-    script.src = "https://accounts.google.com/gsi/client";
-    script.async = true;
-    script.defer = true;
-    document.head.appendChild(script);
-
-    script.onload = () => {
-      if (window.google) {
-        tokenClient = window.google.accounts.oauth2.initTokenClient({
-          client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
-          scope: "openid email profile",
-          callback: (response) => {
-            if (response.error) {
-              console.error("Google login error:", response);
-              toast.error("Google login failed. Please try again.", "error");
-              return;
-            }
-
-            // Use the ref to get current userType
-            const currentUserType = userTypeRef.current;
-            console.log("Current userType in callback:", currentUserType);
-
-            handleGoogleLogin(
-              { credential: response.access_token },
-              currentUserType
-            );
-          },
-        });
-      }
-    };
-
-    return () => {
-      if (document.head.contains(script)) {
-        document.head.removeChild(script);
-      }
-    };
-  }, []);
-
-  useEffect(() => {
-    return () => {
-      if (emailTypingTimer) clearTimeout(emailTypingTimer);
-      if (passwordTypingTimer) clearTimeout(passwordTypingTimer);
-      if (confirmPasswordTypingTimer) clearTimeout(confirmPasswordTypingTimer);
-      if (websiteTypingTimer) clearTimeout(websiteTypingTimer);
-      if (instagramTypingTimer) clearTimeout(instagramTypingTimer);
-    };
-  }, [emailTypingTimer, passwordTypingTimer, websiteTypingTimer, instagramTypingTimer]);
-
-  const validateBusinessEmail = async (email) => {
-    if (!email) {
-      setEmailValidation({ isValid: false, message: "", type: "" });
-      return;
-    }
-
-    // Basic email format validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      setEmailValidation({
-        isValid: false,
-        message: "Please enter a valid email address",
-        type: "error",
-      });
-      return;
-    }
-
-    // Check email existence based on mode
-    try {
-      const response = await checkEmailExists(email);
-
-      if (authMode === "signup") {
-        // SIGNUP MODE: Email shouldn't exist
-        if (response.success && response.exists) {
-          setEmailValidation({
-            isValid: false,
-            message: "This email is already in use. Try to login.",
-            type: "error",
-          });
-          return;
-        }
-      } else if (authMode === "login") {
-        // LOGIN MODE: Email should exist
-        if (response.success && !response.exists) {
-          setEmailValidation({
-            isValid: false,
-            message: "Please sign up.",
-            type: "error",
-          });
-          return;
-        }
-      }
-    } catch (error) {
-      console.error("Email check failed:", error);
-      // Continue with validation even if check fails
-    }
-
-    const domain = email.split("@")[1].toLowerCase();
-
-    // Common personal email providers - STRICT LIST
-    const personalProviders = [
-      "gmail.com",
-      "yahoo.com",
-      "yahoo.co.uk",
-      "yahoo.ca",
-      "hotmail.com",
-      "hotmail.co.uk",
-      "outlook.com",
-      "outlook.co.uk",
-      "aol.com",
-      "icloud.com",
-      "me.com",
-      "mac.com",
-      "live.com",
-      "live.co.uk",
-      "msn.com",
-      "ymail.com",
-      "rocketmail.com",
-      "protonmail.com",
-      "proton.me",
-      "tutanota.com",
-      "zoho.com",
-      "mail.com",
-      "gmx.com",
-      "rediffmail.com",
-      "fastmail.com",
-      "mailfence.com",
-      "guerrillamail.com",
-      "10minutemail.com",
-      "tempmail.org",
-      "mailinator.com",
-    ];
-
-    // STRICT: Block personal emails completely
-    if (personalProviders.includes(domain)) {
-      setEmailValidation({
-        isValid: false,
-        message:
-          "Personal email addresses are not allowed. Please use your business/work email.",
-        type: "error",
-      });
-      return;
-    }
-
-    // Additional checks for business domains
-    const businessIndicators = [
-      ".co",
-      ".com",
-      ".org",
-      ".com",
-      ".biz",
-      ".info",
-      ".pro",
-      ".edu",
-      ".gov",
-    ];
-
-    const hasBusinessTLD = businessIndicators.some((tld) =>
-      domain.endsWith(tld)
-    );
-
-    const isCustomDomain =
-      !personalProviders.includes(domain) &&
-      domain.includes(".") &&
-      domain.split(".").length >= 2;
-
-    if (isCustomDomain && hasBusinessTLD) {
-      setEmailValidation({
-        isValid: true,
-        message: "Business email verified",
-        type: "success",
-      });
-    } else {
-      setEmailValidation({
-        isValid: false,
-        message: "Please use a valid business/work email address",
-        type: "error",
-      });
-    }
-  };
-
-  const validateWebsite = (url, showMessage = true) => {
-    if (!url) {
-      setWebsiteValidation({ isValid: false, message: "", type: "" });
-      return;
-    }
-
-    let formattedUrl = url.trim();
-    if (
-      !formattedUrl.startsWith("http://") &&
-      !formattedUrl.startsWith("https://")
-    ) {
-      formattedUrl = "https://" + formattedUrl;
-    }
-
-    try {
-      const urlObj = new URL(formattedUrl);
-      const hostname = urlObj.hostname;
-
-      if (!hostname || !hostname.includes(".") || hostname.length < 3) {
-        throw new Error("Invalid hostname");
-      }
-
-      // Get the email from either formData or user state
-      const email = formData.email || user?.email || "";
-
-      if (!email) {
-        setWebsiteValidation({
-          isValid: false,
-          message: showMessage
-            ? "Email not found. Please complete email step first."
-            : "",
-          type: "error",
-        });
-        return;
-      }
-
-      const websiteDomain = hostname.replace(/^www\./, "").toLowerCase();
-      const emailDomain = email.split("@")[1]?.toLowerCase();
-
-      if (!emailDomain) {
-        setWebsiteValidation({
-          isValid: false,
-          message: showMessage ? "Invalid email format" : "",
-          type: "error",
-        });
-        return;
-      }
-
-      // Check if it's a personal email domain
-      const personalProviders = [
-        "gmail.com",
-        "yahoo.com",
-        "yahoo.co.uk",
-        "yahoo.ca",
-        "hotmail.com",
-        "hotmail.co.uk",
-        "outlook.com",
-        "outlook.co.uk",
-        "aol.com",
-        "icloud.com",
-        "me.com",
-        "mac.com",
-        "live.com",
-        "live.co.uk",
-        "msn.com",
-        "ymail.com",
-        "rocketmail.com",
-        "protonmail.com",
-        "proton.me",
-        "tutanota.com",
-        "zoho.com",
-        "mail.com",
-        "gmx.com",
-        "rediffmail.com",
-        "fastmail.com",
-        "mailfence.com",
-        "guerrillamail.com",
-        "10minutemail.com",
-        "tempmail.org",
-        "mailinator.com",
-      ];
-
-      // If email is from a personal provider, allow any valid website
-      if (personalProviders.includes(emailDomain)) {
-        setWebsiteValidation({
-          isValid: true,
-          message: showMessage ? "Website format is valid" : "",
-          type: "success",
-        });
-        return;
-      }
-
-      // For business emails, domain must match
-      if (websiteDomain === emailDomain) {
-        setWebsiteValidation({
-          isValid: true,
-          message: showMessage ? "Website matches your email domain" : "",
-          type: "success",
-        });
-      } else {
-        setWebsiteValidation({
-          isValid: false,
-          message: showMessage
-            ? `Website domain (${websiteDomain}) must match your email domain (${emailDomain})`
-            : "",
-          type: "error",
-        });
-      }
-    } catch (error) {
-      setWebsiteValidation({
-        isValid: false,
-        message: showMessage ? "Please enter a valid website URL" : "",
-        type: "error",
-      });
-    }
-  };
-
   const handleInputChange = (field, value) => {
     if (field === "phone") {
       const formattedPhone = formatPhoneNumber(value);
       setFormData((prev) => ({ ...prev, [field]: formattedPhone }));
     } else if (field === "confirmPassword") {
-      setConfirmPassword(value);
+      setFormData((prev) => ({ ...prev, [field]: value }));
+      // Use the hook's handler - pass both passwords
+      handleConfirmPasswordChange(formData.password, value);
 
-      // Hide error while typing
-      setShowConfirmPasswordError(false);
-
-      // Clear existing timer
-      if (confirmPasswordTypingTimer) {
-        clearTimeout(confirmPasswordTypingTimer);
-      }
-
-      // Set new timer - show error after user stops typing for 800ms
-      const newTimer = setTimeout(() => {
-        validateConfirmPassword(formData.password, value);
-        setShowConfirmPasswordError(true);
-      }, 800);
-
-      setConfirmPasswordTypingTimer(newTimer);
     } else {
       setFormData((prev) => ({ ...prev, [field]: value }));
     }
 
-
     if (field === "password") {
-      // Hide error while typing
-      setShowPasswordError(false);
-
-      // Clear existing timer
-      if (passwordTypingTimer) {
-        clearTimeout(passwordTypingTimer);
+      handlePasswordChange(value);
+      if (authMode === "signup" && formData.confirmPassword) {
+        handleConfirmPasswordChange(value, formData.confirmPassword);
       }
-
-      // Set new timer
-      const newTimer = setTimeout(() => {
-        validatePassword(value);
-        setShowPasswordError(true);
-        if (authMode === "signup" && confirmPassword) {
-          validateConfirmPassword(value, confirmPassword);
-        }
-
-        // MOVE THIS INSIDE the setTimeout callback
-        if (formData.email) {
-          validateBusinessEmail(formData.email);
-          setShowEmailError(true);
-        }
-      }, 800); // ← Email validation now happens AFTER 800ms delay
-
-      setPasswordTypingTimer(newTimer);
     }
 
     else if (field === "website") {
-      // ADD THIS NEW BLOCK
-      // Hide error while typing
-      setShowWebsiteError(false);
-
-      // Clear existing timer
-      if (websiteTypingTimer) {
-        clearTimeout(websiteTypingTimer);
-      }
-
-      // Set new timer - show error after user stops typing for 800ms
-      const newTimer = setTimeout(() => {
-        validateWebsite(value, true); // Show message after delay
-        setShowWebsiteError(true);
-      }, 800);
-
-      setWebsiteTypingTimer(newTimer);
+      setFormData((prev) => ({ ...prev, [field]: value }));
+      // Use the hook's handler
+      handleWebsiteChange(value);
     }
 
     else if (field === "instagram") {
       setFormData((prev) => ({ ...prev, [field]: value }));
-
-      setShowInstagramError(false);
-
-      if (instagramTypingTimer) clearTimeout(instagramTypingTimer);
-
-      const newTimer = setTimeout(() => {
-        validateInstagram(value); // pass value, not undefined
-        setShowInstagramError(true);
-      }, 800);
-
-      setInstagramTypingTimer(newTimer);
+      // Use the hook's handler
+      handleInstagramChange(value);
     }
   };
 
@@ -1044,133 +511,11 @@ const page = () => {
     }
   };
 
-  const handleGoogleLogin = async (credentialResponse, userType) => {
-    setIsLoading(true);
-    setLoadingMessage("Signing in with Google...");
-
-    try {
-      let result;
-
-      // Choose the appropriate Google login function based on user type
-      if (userType === "creative") {
-        result = await googleLoginCreative(
-          credentialResponse.credential,
-          userType
-        );
-      } else if (userType === "couple") {
-        result = await googleLoginCouple(
-          credentialResponse.credential,
-          userType
-        );
-      } else {
-        throw new Error("Invalid user type");
-      }
-
-      if (result.success) {
-        // For Google users, always mark as email verified
-        const googleUser = {
-          ...result.data.user,
-          emailVerified: true, // Force email verification to true for Google users
-        };
-
-        setUser(googleUser);
-        await handleGoogleToken(result.data.accessToken);
-
-        if (userType === "couple") {
-          router.push("/feed/couple");
-          return;
-        }
-
-        // For creatives, check if they need to complete onboarding steps
-        const userProfile = googleUser.profile || {};
-
-        // REMOVED: Email verification check - Google users are automatically verified
-        // Skip directly to phone number if not provided
-        if (!userProfile.phone) {
-          console.log("Google user - redirecting to phone-number step");
-          setCurrentStep("phone-number");
-          return;
-        }
-
-        // Continue with other onboarding steps
-        if (!userProfile.businessName) {
-          setCurrentStep("business-name");
-          return;
-        }
-
-        if (!userProfile.website) {
-          setCurrentStep("business-website");
-          return;
-        }
-
-        if (!userProfile.instagram) {
-          setCurrentStep("business-instagram");
-          return;
-        }
-
-        if (
-          !userProfile.creativeDomains ||
-          userProfile.creativeDomains.length === 0
-        ) {
-          setCurrentStep("creative-domain");
-          return;
-        }
-
-        // If user has completed all steps, redirect to appropriate page
-        setLoadingMessage("Redirecting to your dashboard...");
-
-        try {
-          const statusResponse = await checkUserStatus();
-          if (statusResponse?.data?.status === "pending") {
-            router.push("/waiting");
-          } else {
-            router.push("/home");
-          }
-        } catch (statusError) {
-          console.error("Status check failed:", statusError);
-          router.push("/waiting");
-        }
-      } else {
-        // Handle the returned error
-        const error = result.error;
-
-        if (error.errorCode === "BUSINESS_EMAIL_REQUIRED") {
-          toast.info(
-            "Business Email Required\n\nPlease use your company email address to sign in."
-          );
-        } else if (error.errorCode === "INVALID_DOMAIN") {
-          toast.error(
-            "Invalid Domain\n\nPlease use a valid business email address."
-          );
-        } else {
-          toast.error(error.message);
-        }
-      }
-    } catch (error) {
-      // This should only catch unexpected errors now
-      console.error("Unexpected error:", error);
-      toast.error("An unexpected error occurred. Please try again.");
-    } finally {
-      setIsLoading(false);
-      setLoadingMessage("");
-    }
-  };
-
-  const handleGoogleButtonClick = () => {
-    setToast(null);
-
-    if (tokenClient) {
-      tokenClient.requestAccessToken();
-    } else {
-      toast.error("Google Sign-In is not available. Please try again.");
-    }
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     switch (currentStep) {
-      case "email-login":
+      case "auth":
         setIsLoading(true);
 
         try {
@@ -1198,7 +543,7 @@ const page = () => {
           if (typeof window !== "undefined" && accessToken && refreshToken) {
             localStorage.setItem("accessToken", accessToken);
             localStorage.setItem("refreshToken", refreshToken);
-            console.log("✅ Tokens stored in localStorage");
+            console.log(" Tokens stored in localStorage");
           }
 
           // Handle token if provided (Google auth)
@@ -1218,12 +563,12 @@ const page = () => {
 
           // Update server progress for login/registration
           await updateServerProgress(
-            "email-login",
+            "auth",
             {
               email: formData.email,
               userType: "creative",
             },
-            "email-login"
+            "auth"
           );
 
           // Check user's current email verification status
@@ -1473,7 +818,7 @@ const page = () => {
         break;
 
       case "business-instagram":
-        if (formData.instagram.trim()) {
+        if (formData.instagram.trim() && instagramValidation.isValid) {
           await updateServerProgress(
             currentStep,
             {
@@ -1641,88 +986,19 @@ const page = () => {
     }
   };
 
-  const ValidationMessage = ({ validation, show = true }) => {
-    if (!validation.message || !show) return null;
-
-    const getIcon = () => {
-      switch (validation.type) {
-        case "success":
-          return <CheckCircle size={16} className="text-green-500" />;
-        case "warning":
-          return <AlertCircle size={16} className="text-yellow-500" />;
-        case "error":
-          return <AlertCircle size={16} className="text-red-500" />;
-        default:
-          return null;
-      }
-    };
-
-    const getTextColor = () => {
-      switch (validation.type) {
-        case "success":
-          return "text-green-600";
-        case "warning":
-          return "text-yellow-600";
-        case "error":
-          return "text-red-600";
-        default:
-          return "text-gray-600";
-      }
-    };
-
-    return (
-      <div className={`flex items-center gap-2 mt-2 text-sm ${getTextColor()}`}>
-        {getIcon()}
-        <span>{validation.message}</span>
-      </div>
-    );
-  };
-
-  const NavigationButtons = ({
-    onNext,
-    onBack,
-    canContinue = true,
-    showBack = true,
-  }) => (
-    <div className="flex items-center justify-between">
-      {showBack ? (
-        <button
-          type="button"
-          onClick={onBack}
-          disabled={isLoading}
-          className={`transition-colors p-2 ${isLoading
-            ? "text-gray-400 cursor-not-allowed"
-            : "text-black hover:text-gray-800 cursor-pointer"
-            }`}
-        >
-          <ChevronLeft size={24} />
-        </button>
-      ) : (
-        <div />
-      )}
-
-      <button
-        type="submit"
-        onClick={onNext}
-        disabled={!canContinue || isLoading}
-        className={`transition-colors p-2 relative group ${canContinue && !isLoading
-          ? "text-black hover:text-gray-800 cursor-pointer"
-          : "text-gray-400 cursor-not-allowed"
-          }`}
-        title={
-          !canContinue && !isLoading
-            ? "Please use a valid business email address"
-            : ""
-        }
-      >
-        {isLoading ? (
-          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-400"></div>
-        ) : (
-          <ChevronRight size={24} />
-        )}
-      </button>
-    </div>
+  // Add this function inside your component
+  const PasswordToggleButton = ({ showPassword, setShowPassword, disabled }) => (
+    <button
+      type="button"
+      onClick={() => setShowPassword(!showPassword)}
+      className="text-gray-500 hover:text-gray-700 focus:outline-none"
+      disabled={disabled}
+    >
+      {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+    </button>
   );
+
+
 
   const handleResetPassword = async (e) => {
     e.preventDefault();
@@ -1741,7 +1017,7 @@ const page = () => {
         toast.success("Password reset link sent! Check your email inbox.");
 
         setTimeout(() => {
-          setCurrentStep("email-login");
+          setCurrentStep("auth");
         }, 2000);
       } else {
         toast.error(
@@ -1756,81 +1032,7 @@ const page = () => {
     }
   };
 
-  const PasswordRequirements = ({ requirements, show }) => {
-    if (!show || authMode === "login") return null;
 
-    const requirementsList = [
-      {
-        key: "length",
-        text: "At least 8 characters",
-        met: requirements.length,
-      },
-      {
-        key: "uppercase",
-        text: "One uppercase letter",
-        met: requirements.uppercase,
-      },
-      {
-        key: "lowercase",
-        text: "One lowercase letter",
-        met: requirements.lowercase,
-      },
-      { key: "number", text: "One number", met: requirements.number },
-    ];
-
-    return (
-      <div className="mt-3 p-3 bg-gray-50 rounded-lg shadow-sm">
-        <p className="text-sm font-medium text-gray-700 mb-2">
-          Password must contain:
-        </p>
-        <div className="space-y-1">
-          {requirementsList.map((req) => (
-            <div key={req.key} className="flex items-center gap-2 text-sm">
-              {req.met ? (
-                <CheckCircle size={14} className="text-green-500" />
-              ) : (
-                <div className="w-3.5 h-3.5 rounded-full border border-gray-300" />
-              )}
-              <span className={req.met ? "text-green-600" : "text-gray-600"}>
-                {req.text}
-              </span>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  };
-
-  const LoadingOverlay = () => {
-    if (!isLoading && !initializing) return null;
-
-    return (
-      <div className="fixed inset-0 bg-[#000000b0] bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-white rounded-lg p-6 flex flex-col items-center space-y-4">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-black"></div>
-          <p className="text-gray-700 font-medium">
-            {loadingMessage ||
-              (initializing ? "Initializing onboarding..." : "Loading...")}
-          </p>
-        </div>
-      </div>
-    );
-  };
-
-  const LoadingFallback = () => {
-    if (!initializing) return null;
-
-    return (
-      <div className="fixed inset-0 bg-white bg-opacity-60 backdrop-blur-sm flex items-center justify-center z-[9999] overflow-hidden">
-        <div className="flex flex-col items-center space-y-6 p-8">
-          {/* Enhanced Spinner */}
-          <div className="relative">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-black"></div>{" "}
-          </div>
-        </div>
-      </div>
-    );
-  };
 
   const renderStepContent = () => {
     if (initializing) return null;
@@ -1846,7 +1048,7 @@ const page = () => {
               <button
                 onClick={() => {
                   setUserType("creative");
-                  setCurrentStep("login-choice");
+                  router.push("/login?flow=creative&step=auth&mode=signup");
                 }}
                 className="w-full border-2 border-gray-300 text-gray-700 py-4 px-6 rounded-xl font-semibold hover:border-gray-400 transition-colors flex items-center justify-between"
               >
@@ -1866,134 +1068,58 @@ const page = () => {
           </div>
         );
 
-      case "login-choice":
-        return (
-          <div className="w-full max-w-md flex flex-col items-center justify-between min-h-[90dvh]">
-            <div className=""></div>
-            <div className="w-full ">
-              <div className="text-center">
-                <h1 className="text-3xl font-bold text-gray-900 mb-8 font-nunito">
-                  CUNO COVO
-                </h1>
-                <div className="space-y-4">
-                  <button
-                    onClick={handleGoogleButtonClick}
-                    className="w-full border-2 border-gray-300 text-gray-700 py-4 px-6 rounded-full font-semibold hover:border-gray-400 transition-colors flex items-center justify-center gap-3"
-                  >
-                    <svg
-                      width="20"
-                      height="20"
-                      viewBox="0 0 48 48"
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="fill-current text-black"
-                    >
-                      <path d="M43.611 20.083H42V20H24v8h11.303c-1.628 4.657-6.084 8-11.303 8-6.627 0-12-5.373-12-12s5.373-12 12-12c3.062 0 5.855 1.154 7.973 3.027l5.657-5.657C34.016 6.14 29.268 4 24 4 12.954 4 4 12.954 4 24s8.954 20 20 20c11.046 0 20-8.954 20-20 0-1.34-.138-2.65-.389-3.917z" />
-                    </svg>
-                    Continue with Google
-                  </button>
-
-                  <button
-                    onClick={() => setCurrentStep("email-login")}
-                    className="w-full border-2 border-gray-300 text-gray-700 py-4 px-6 rounded-full font-semibold hover:border-gray-400 transition-colors flex items-center justify-center gap-3"
-                  >
-                    <Mail />
-                    Continue with Email
-                  </button>
-                </div>
-              </div>
-            </div>
-            <div className="text-center mx-[-20px]">
-              <p className="text-[10px] [@media(min-width:360px)]:text-[10px] text-gray-600">
-                You acknowledge that you understand and agree to the{" "}
-                <span
-                  onClick={() => openHelpCenter("terms")}
-                  className="underline"
-                >
-                  {" "}
-                  Terms
-                </span>{" "}
-                and{" "}
-                <span
-                  onClick={() => openHelpCenter("privacy")}
-                  className="underline"
-                >
-                  Policy
-                </span>
-              </p>
-            </div>
-          </div>
-        );
-
-      case "email-login":
+      case "auth":
         return (
           <div className="w-full max-w-md flex flex-col items-center justify-between min-h-[88dvh]">
             <div className="my-3"></div>
             <div className="w-full mt-7">
               <form onSubmit={handleSubmit} className="space-y-3">
                 <div>
-                  <label className=" text-sm font-medium text-gray-700 mb-2 flex items-center gap-1">
-                    Business Email
-                  </label>
-
                   <div className="relative">
-                    <input
+                    <InputField
                       type="email"
                       value={formData.email}
-                      onChange={(e) =>
-                        handleInputChange("email", e.target.value)
-                      }
+                      onChange={(e) => {
+                        handleInputChange("email", e.target.value);
+                      }}
+                      onFocus={() => {
+                        if (formData.email) {
+                          handleEmailChange(formData.email);
+                          setShowEmailError(true);
+                        }
+                      }}
                       disabled={isLoading}
-                      className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-black focus:border-transparent ${isLoading ? "bg-gray-100 cursor-not-allowed" : ""
-                        } ${emailValidation.type === "error"
-                          ? "border-red-300"
-                          : emailValidation.type === "warning"
-                            ? "border-yellow-300"
-                            : emailValidation.type === "success"
-                              ? "border-green-300"
-                              : "border-gray-300"
-                        }`}
                       placeholder="your@business.com"
+                      label="Business Email"
                       required
+                      validation={emailValidation}
+                      showValidation={showEmailError}
+                      className="mb-4"
                     />
-                    {emailValidation.type === "success" && (
-                      <CheckCircle
-                        className="absolute right-3 top-3 text-green-500"
-                        size={20}
-                      />
-                    )}
                   </div>
-                  <ValidationMessage
-                    validation={emailValidation}
-                    show={showEmailError}
-                  />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Password
-                  </label>
                   <div className="relative">
-                    <input
+                    <InputField
                       type={showPassword ? "text" : "password"}
                       value={formData.password}
-                      onChange={(e) =>
-                        handleInputChange("password", e.target.value)
-                      }
+                      onChange={(e) => handleInputChange("password", e.target.value)}
                       onFocus={handlePasswordFieldFocus}
                       disabled={isLoading}
-                      className={`w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent ${isLoading ? "bg-gray-100 cursor-not-allowed" : ""
-                        }`}
                       placeholder="Enter your password"
+                      label="Password"
                       required
+                      validation={passwordValidation}
+                      showValidation={showPasswordError}
+                      rightElement={
+                        <PasswordToggleButton
+                          showPassword={showPassword}
+                          setShowPassword={setShowPassword}
+                          disabled={isLoading}
+                        />
+                      }
                     />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-3 text-gray-500 hover:text-gray-700 focus:outline-none"
-                      disabled={isLoading}
-                    >
-                      {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                    </button>
                   </div>
                   {authMode === "login" && (
                     <div className="text-right">
@@ -2016,38 +1142,29 @@ const page = () => {
                   />
                   {authMode === "signup" && (
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 my-2">
-                        Confirm Password
-                      </label>
-                      <div className="relative">
-                        <input
+
+                      <div className="relative mt-4">
+                        <InputField
                           type={showPassword ? "text" : "password"}
-                          value={confirmPassword}
+                          value={formData.confirmPassword}
                           onChange={(e) =>
                             handleInputChange("confirmPassword", e.target.value)
                           }
                           disabled={isLoading}
-                          className={`w-full px-4 py-3 pr-12 border rounded-lg focus:ring-2 focus:ring-black focus:border-transparent ${isLoading ? "bg-gray-100 cursor-not-allowed" : ""
-                            } ${confirmPasswordValidation.type === "error"
-                              ? "border-red-300"
-                              : confirmPasswordValidation.type === "success"
-                                ? "border-green-300"
-                                : "border-gray-300"
-                            }`}
                           placeholder="Confirm your password"
+                          label="Confirm Password"
                           required
+                          validation={confirmPasswordValidation}
+                          showValidation={showConfirmPasswordError}
+                          rightElement={
+                            <PasswordToggleButton
+                              showPassword={showPassword}
+                              setShowPassword={setShowPassword}
+                              disabled={isLoading}
+                            />
+                          }
                         />
-                        {confirmPasswordValidation.type === "success" && (
-                          <CheckCircle
-                            className="absolute right-3 top-3 text-green-500"
-                            size={20}
-                          />
-                        )}
                       </div>
-                      <ValidationMessage
-                        validation={confirmPasswordValidation}
-                        show={showConfirmPasswordError}
-                      />
                     </div>
                   )}
                 </div>
@@ -2076,7 +1193,10 @@ const page = () => {
                         "/login?flow=creative&step=login-choice&mode=login"
                       )
                       setFormData(prev => ({ ...prev, password: "", confirmPassword: "", email: "" }));
+                      setConfirmPassword("");
                     }
+
+
 
 
                     }
@@ -2104,25 +1224,10 @@ const page = () => {
                 </div>
               )}
             </div>
-            <div className="text-center mx-[-20px]">
-              <p className="text-[8px] [@media(min-width:360px)]:text-[10px] text-gray-600">
-                You acknowledge that you understand and agree to the{" "}
-                <span
-                  onClick={() => openHelpCenter("terms")}
-                  className="underline"
-                >
-                  {" "}
-                  Terms
-                </span>{" "}
-                and{" "}
-                <span
-                  onClick={() => openHelpCenter("privacy")}
-                  className="underline"
-                >
-                  Policy
-                </span>
-              </p>
-            </div>
+            <TermsFooter
+              onTermsClick={() => openHelpCenter("terms")}
+              onPolicyClick={() => openHelpCenter("privacy")}
+            />
           </div>
         );
 
@@ -2136,21 +1241,6 @@ const page = () => {
                   CUNO COVO
                 </h1>
                 <div className="space-y-4">
-                  <button
-                    onClick={handleGoogleButtonClick}
-                    className="w-full border-2 border-gray-300 text-gray-700 py-4 px-6 rounded-full font-semibold hover:border-gray-400 transition-colors flex items-center justify-center gap-3"
-                  >
-                    <svg
-                      width="20"
-                      height="20"
-                      viewBox="0 0 48 48"
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="fill-current text-black"
-                    >
-                      <path d="M43.611 20.083H42V20H24v8h11.303c-1.628 4.657-6.084 8-11.303 8-6.627 0-12-5.373-12-12s5.373-12 12-12c3.062 0 5.855 1.154 7.973 3.027l5.657-5.657C34.016 6.14 29.268 4 24 4 12.954 4 4 12.954 4 24s8.954 20 20 20c11.046 0 20-8.954 20-20 0-1.34-.138-2.65-.389-3.917z" />
-                    </svg>
-                    Continue with Google
-                  </button>
 
                   <button
                     onClick={() => router.push("/feed")}
@@ -2161,25 +1251,10 @@ const page = () => {
                 </div>
               </div>
             </div>
-            <div className="text-center mx-[-20px]">
-              <p className="text-[8px] [@media(min-width:360px)]:text-[10px] text-gray-600">
-                You acknowledge that you understand and agree to the{" "}
-                <span
-                  onClick={() => openHelpCenter("terms")}
-                  className="underline"
-                >
-                  {" "}
-                  Terms
-                </span>{" "}
-                and{" "}
-                <span
-                  onClick={() => openHelpCenter("privacy")}
-                  className="underline"
-                >
-                  Policy
-                </span>
-              </p>
-            </div>
+            <TermsFooter
+              onTermsClick={() => openHelpCenter("terms")}
+              onPolicyClick={() => openHelpCenter("privacy")}
+            />
           </div>
         );
 
@@ -2299,15 +1374,13 @@ const page = () => {
                       <span className="text-gray-600 font-medium">+1</span>
                     </div>
 
-                    <input
+                    <InputField
                       type="tel"
                       value={formData.phone}
-                      onChange={(e) =>
-                        handleInputChange("phone", e.target.value)
-                      }
-                      className="w-full pl-3 pr-4 py-3 border border-gray-300 rounded-r-lg focus:ring-0 focus:outline-none "
+                      onChange={(e) => handleInputChange("phone", e.target.value)}
                       placeholder="555 123 4567"
                       required
+                      className="flex-1"
                     />
                   </div>
                 </div>
@@ -2318,25 +1391,10 @@ const page = () => {
                 onBack={goToPrevStep}
                 canContinue={formData.phone.length > 8}
               />
-              <div className="text-center mx-[-20px]">
-                <p className="text-[8px] [@media(min-width:360px)]:text-[10px] text-gray-600">
-                  You acknowledge that you understand and agree to the{" "}
-                  <span
-                    onClick={() => openHelpCenter("terms")}
-                    className="underline"
-                  >
-                    {" "}
-                    Terms
-                  </span>{" "}
-                  and{" "}
-                  <span
-                    onClick={() => openHelpCenter("privacy")}
-                    className="underline"
-                  >
-                    Policy
-                  </span>
-                </p>
-              </div>
+              <TermsFooter
+                onTermsClick={() => openHelpCenter("terms")}
+                onPolicyClick={() => openHelpCenter("privacy")}
+              />
 
             </form>
           </div>
@@ -2351,17 +1409,14 @@ const page = () => {
 
             <form onSubmit={handleSubmit} className="space-y-6">
               <div>
-                <input
+                <InputField
                   type="text"
                   value={formData.referralCode}
-                  onChange={(e) =>
-                    handleInputChange("referralCode", e.target.value)
-                  }
+                  onChange={(e) => handleInputChange("referralCode", e.target.value)}
                   disabled={isLoading}
-                  className={`w-full px-4 py-3 border text-gray-800 border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent text-center text-lg tracking-widest ${isLoading ? "bg-gray-100 cursor-not-allowed" : ""
-                    }`}
                   placeholder="0000"
                   required
+                  className="text-center text-lg tracking-widest"
                 />
                 {referralError && (
                   <p className="mt-2 text-sm text-red-600 text-left">
@@ -2391,7 +1446,6 @@ const page = () => {
           </div>
         );
 
-
       case "business-website":
         return (
           <div className="w-full max-w-md">
@@ -2408,33 +1462,17 @@ const page = () => {
                     className="absolute left-3 top-3 text-gray-400"
                     size={20}
                   />
-                  <input
+                  <InputField
                     type="url"
                     value={formData.website}
-                    onChange={(e) =>
-                      handleInputChange("website", e.target.value)
-                    }
-                    className={`w-full pl-12 pr-4 py-3 text-gray-800 border rounded-lg focus:ring-2 focus:ring-black focus:border-transparent ${websiteValidation.type === "error" && showWebsiteError
-                      ? "border-red-300"
-                      : websiteValidation.type === "success" &&
-                        showWebsiteError
-                        ? "border-green-300"
-                        : "border-gray-300"
-                      }`}
+                    onChange={(e) => handleInputChange("website", e.target.value)}
                     placeholder="https://yourbusiness.com"
                     required
+                    validation={websiteValidation}
+                    showValidation={showWebsiteError}
+                    icon={<Globe size={20} />}
                   />
-                  {websiteValidation.type === "success" && showWebsiteError && (
-                    <CheckCircle
-                      className="absolute right-3 top-3 text-green-500"
-                      size={20}
-                    />
-                  )}
                 </div>
-                <ValidationMessage
-                  validation={websiteValidation}
-                  show={showWebsiteError}
-                />
               </div>
 
               <NavigationButtons
@@ -2453,7 +1491,6 @@ const page = () => {
               <h1 className="text-3xl font-bold text-gray-900">
                 Business Instagram
               </h1>
-
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-6">
@@ -2463,42 +1500,17 @@ const page = () => {
                     className="absolute left-3 top-3 text-gray-400"
                     size={20}
                   />
-                  <input
+                  <InputField
                     type="text"
                     value={formData.instagram}
-                    onChange={(e) =>
-                      handleInputChange("instagram", e.target.value)
-                    }
-                    className={`w-full pl-12 pr-4 py-3 text-gray-800 border rounded-lg focus:ring-2 focus:ring-black focus:border-transparent ${instagramValidation.type === "error" && showInstagramError
-                      ? "border-red-300"
-                      : instagramValidation.type === "success" && showInstagramError
-                        ? "border-green-300"
-                        : "border-gray-300"
-                      }`}
+                    onChange={(e) => handleInputChange("instagram", e.target.value)}
                     placeholder="@yourbusiness"
                     required
+                    validation={instagramValidation}
+                    showValidation={showInstagramError}
+                    icon={<Instagram size={20} />}
                   />
-                  {instagramValidation.type === "success" && showInstagramError && (
-                    <CheckCircle
-                      className="absolute right-3 top-3 text-green-500"
-                      size={20}
-                    />
-                  )}
-                  {/* {formData.instagramAccountId && (
-                    <div className="absolute right-3 top-3">
-                      <CheckCircle className="text-green-500" size={20} />
-                    </div>
-                  )} */}
                 </div>
-                {formData.instagramAccountId && (
-                  <p className="mt-2 text-sm text-green-600">
-                    ✓ Connected to Instagram
-                  </p>
-                )}
-                <ValidationMessage
-                  validation={instagramValidation}
-                  show={showInstagramError}
-                />
               </div>
 
               <NavigationButtons
@@ -2508,7 +1520,6 @@ const page = () => {
                   instagramValidation.type === "success" &&
                   instagramValidation.isValid === true
                 }
-
               />
             </form>
           </div>
@@ -2572,35 +1583,20 @@ const page = () => {
                 <h1 className="text-3xl font-bold text-gray-900">
                   Reset Password
                 </h1>
-                {/* <p className="text-gray-600 mt-2">
-                  Enter your email address and we'll send you a link to reset
-                  your password
-                </p> */}
               </div>
 
               <form onSubmit={handleResetPassword} className="space-y-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Email Address
-                  </label>
                   <div className="relative">
-                    <input
+                    <InputField
                       type="email"
                       value={formData.resetEmail || ""}
-                      onChange={(e) =>
-                        handleInputChange("resetEmail", e.target.value)
-                      }
+                      onChange={(e) => handleInputChange("resetEmail", e.target.value)}
                       disabled={isLoading}
-                      className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-black focus:border-transparent ${isLoading
-                        ? "bg-gray-100 cursor-not-allowed"
-                        : "border-gray-300"
-                        }`}
                       placeholder="your@business.com"
+                      label="Email Address"
                       required
-                    />
-                    <Mail
-                      className="absolute right-3 top-3 text-gray-400"
-                      size={20}
+                      icon={<Mail size={20} />}
                     />
                   </div>
                 </div>
@@ -2627,7 +1623,7 @@ const page = () => {
                   <button
                     type="button"
                     onClick={() => {
-                      setCurrentStep("email-login");
+                      setCurrentStep("auth");
                     }}
                     className="w-full py-2 text-gray-600 hover:text-gray-800 transition-colors"
                   >
@@ -2642,7 +1638,7 @@ const page = () => {
                 Remember your password?{" "}
                 <button
                   onClick={() => {
-                    setCurrentStep("email-login");
+                    setCurrentStep("auth");
                     router.push(
                       "/login?flow=creative&step=login-choice&mode=login"
                     );
@@ -2663,7 +1659,7 @@ const page = () => {
 
   const handlePasswordFieldFocus = () => {
     if (formData.email) {
-      validateBusinessEmail(formData.email);
+      handleEmailChange(formData.email);
       setShowEmailError(true);
     }
   };
@@ -2693,7 +1689,7 @@ const page = () => {
             ![
               "landing",
               "login-choice",
-              "email-login",
+              "auth",
               "email-choice",
               "reset-password",
               "email-verification",

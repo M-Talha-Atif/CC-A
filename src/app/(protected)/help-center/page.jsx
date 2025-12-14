@@ -168,7 +168,7 @@ const FAQContent = () => {
     {
       question: "How do referrals work?",
       answer:
-        "Creatives can find their referral code in their profile. By sharing this code with other wedding Photographers, Videographers, Florists, and Planners, they will earn a 0.5 point increase for each Creative who signs up using their code, for up to 8 Creatives. For example: 1st referral = 1.5 points, 2nd referral = 2 points, 3rd referral = 2.5 points, and so on.",
+        "Creatives can find their referral code in their profile. By sharing this code with other wedding Photographers, Videographers, Florists, and Planners, they will earn a 0.5 point increase for each Creative who signs up using their code, for up to 7 Creatives. For example: 1st referral = 1.5 points, 2nd referral = 2 points, 3rd referral = 2.5 points, and so on.",
     },
     {
       question: "What are points used for?",

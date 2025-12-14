@@ -457,46 +457,44 @@ const CreatePage = () => {
     );
   };
 
+  function formatOption(value, limit = 26) {
+    // Step 1 — normalize
+    let clean = value.replace(/\n/g, "");
+    clean = clean.slice(0, 50);
 
+    // STEP A → If no need for wrapping
+    if (clean.length <= limit) return clean;
 
+    // Step 2 — find break point
+    let breakIndex = clean.lastIndexOf(" ", limit);
+    if (breakIndex === -1) breakIndex = limit;
+
+    const first = clean.slice(0, breakIndex);
+    let second = clean.slice(breakIndex).trimStart();
+
+    // STEP B → detect if the user is *removing* second line
+    // In this case: remove padded spaces automatically
+    if (second.length === 0) {
+      console.log(`your first line is ${first} and length is ${first.length}`)
+      return first;           // <-- auto remove all padded spaces
+    }
+
+    // STEP C → ADD PADDING (programmatic spaces)
+    const paddedFirst = first + " ".repeat(limit - first.length);
+
+    return `${paddedFirst}\n${second}`;
+  }
 
 
 
 
   const handlePollOptionChange = (value, index) => {
-    // console.log("handlePollOptionChange called with:", JSON.stringify(value));
-
-    // keep the newline EXACTLY as it comes from onChange
-    let total = value.replace(/\n/g, "");
-
-    // hard limit total characters
-    total = total.slice(0, 50);
-
-    // split exactly into 26 + 26
-    const first = total.slice(0, 25);
-    const second = total.slice(25);
-
-    const final = second ? `${first}\n${second}` : first;
-
+    const formatted = formatOption(value);
     const updated = [...pollOptions];
-    updated[index] = final;
+    updated[index] = formatted;
     setPollOptions(updated);
-
-    // let lines = value.split("\n");
-    // console.log("Initial lines count:", lines.length, lines);
-
-    // lines = lines.slice(0, 2).filter(line => line.length > 0);
-    // console.log("After filtering:", lines.length, lines);
-
-    // const formattedValue = lines.join("\n");
-    // console.log("Final formatted value:", JSON.stringify(formattedValue));
-
-    // const updated = [...pollOptions];
-    // updated[index] = formattedValue;
-    // // console.log("Updated pollOptions:", updated);
-
-    // setPollOptions(updated);
   };
+
 
 
   const addPollOption = () => {
@@ -832,6 +830,8 @@ const CreatePage = () => {
                             padding = "px-2.5 py-1 sm:px-3 sm:py-1";
                           }
 
+
+
                           return (
                             <span
                               key={index}
@@ -846,6 +846,8 @@ const CreatePage = () => {
                               </div>
                             </span>
                           );
+
+
                         })}
 
                         {/* Only show + button if not all 4 creatives are selected */}
@@ -979,30 +981,25 @@ const CreatePage = () => {
                             <textarea
                               value={option}
                               onChange={(e) => {
-                                const raw = e.target.value.replace(/\r/g, "");
-                                handlePollOptionChange(raw, index);
-                                // const raw = String(e.target.value || "");
-                                // const noNewlines = raw.replace(/\r/g, "").replace(/\n/g, "");
-                                // const capped = noNewlines.slice(0, 52); // total = 25 * 2 lines
+                                let raw = e.target.value.replace(/\r/g, "");
 
-                                // // split into two lines of 20 chars each
-                                // const first = capped.slice(0, 26);
-                                // const second = capped.length > 26 ? capped.slice(26) : "";
-                                // const formatted = second ? `${first}\n${second}` : first;
+                                // detect if there is a newline
+                                if (raw.includes("\n")) {
+                                  const [first, second] = raw.split("\n");
 
-                                // console.log("first.length:", first.length, "second.length:", second.length);
-                                // console.log("formatted:", JSON.stringify(formatted));
+                                  // if user deleted the entire second line → remove only programmatic spaces
+                                  if (second.trim().length === 0) {
+                                    raw = first.trimEnd();   // <-- removes only trailing padding, NOT typed spaces
+                                  }
+                                }
 
-                                // handlePollOptionChange(formatted, index);
+                                const formatted = formatOption(raw);
+                                handlePollOptionChange(formatted, index);
                               }}
                               onPaste={(e) => {
                                 e.preventDefault();
                                 const pasted = (e.clipboardData || window.clipboardData).getData("text");
-                                const cleaned = pasted.replace(/\r/g, "").replace(/\n/g, "").slice(0, 50);
-                                const formatted =
-                                  cleaned.length > 26
-                                    ? `${cleaned.slice(0, 26)}\n${cleaned.slice(26)}`
-                                    : cleaned;
+                                const formatted = formatOption(pasted);
                                 handlePollOptionChange(formatted, index);
                               }}
                               onKeyDown={(e) => {
@@ -1026,11 +1023,12 @@ const CreatePage = () => {
                             <button
                               type="button"
                               onClick={() => removePollOption(index)}
-                              className="text-gray-500 hover:text-gray-700 cursor-pointer mt-4"
+                              className="text-gray-500 hover:text-gray-700 cursor-pointer mt-4 disabled:opacity-40 disabled:cursor-not-allowed"
                               disabled={pollOptions.length <= 2}
                             >
-                              <X size={18} />
+                              {index > 1 && pollOptions.length > 2 && <X size={18} />}
                             </button>
+
                           </div>
 
                           {isLast && pollOptions.length < 4 && (

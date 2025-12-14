@@ -61,7 +61,7 @@ const NewUserPage = () => {
   };
 
   const handleJoinUs = () => {
-    router.push("/login?flow=creative&step=login-choice&mode=signup");
+    router.push("/login?flow=creative&step=auth&mode=signup");
   };
 
   if (showContent) {

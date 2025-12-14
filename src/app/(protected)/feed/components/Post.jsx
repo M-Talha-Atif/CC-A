@@ -683,9 +683,9 @@ const Post = ({
               return (
                 <div
                   key={index}
-                  className={`w-full flex items-center justify-center mb-2 ${(hasVoted && !canEdit) || isCouple
-                      ? "cursor-not-allowed"
-                      : "cursor-pointer"
+                  className={`w-full flex items-start justify-center mb-2 ${(hasVoted && !canEdit) || isCouple
+                    ? "cursor-not-allowed"
+                    : "cursor-pointer"
                     }`}
                 >
                   <button
@@ -701,7 +701,9 @@ const Post = ({
                     style={{ WebkitTapHighlightColor: "transparent" }}
                   >
                     <span
-                      className={`text-sm text-gray-700 py-1 px-3 w-[200px] text-center rounded-full ease-in-out transition-all break-words whitespace-normal min-h-[32px] flex items-center justify-center ${hasVoted
+                      className={`text-sm text-gray-700 py-1 px-3 w-[200px] text-left rounded-full 
+    ease-in-out transition-all break-words whitespace-normal min-h-[32px] 
+    flex items-start justify-start ${hasVoted
                           ? isUserChoice
                             ? canEdit
                               ? "bg-blue-200 text-blue-800 font-semibold border-2 border-blue-400 hover:bg-blue-300"
@@ -715,6 +717,7 @@ const Post = ({
                         wordBreak: "break-word",
                         overflowWrap: "break-word",
                         lineHeight: "1.2",
+                        whiteSpace: "pre-line"  // <-- IMPORTANT!
                       }}
                     >
                       {voting[post.id] && isUserChoice ? (
@@ -783,10 +786,10 @@ const Post = ({
                         <div className="flex-1 flex justify-center">
                           <span
                             className={`text-sm text-gray-700 px-3 py-1 w-[200px] text-center rounded-full ease-in-out transition-all ${post.quotedPostSnapshot.hasVoted
-                                ? option.isUserChoice
-                                  ? "bg-blue-200 text-blue-800 font-semibold"
-                                  : "bg-gray-200 opacity-75"
+                              ? option.isUserChoice
+                                ? "bg-blue-200 text-blue-800 font-semibold"
                                 : "bg-gray-200 opacity-75"
+                              : "bg-gray-200 opacity-75"
                               }`}
                             style={{
                               wordBreak: "break-word",
@@ -835,8 +838,8 @@ const Post = ({
               <button
                 onClick={handleShareClick}
                 className={`transition-colors cursor-pointer p-1 touch-manipulation ${shouldDisableSharing
-                    ? "text-gray-400 cursor-not-allowed"
-                    : "text-gray-600 hover:text-gray-800"
+                  ? "text-gray-400 cursor-not-allowed"
+                  : "text-gray-600 hover:text-gray-800"
                   }`}
                 style={{ WebkitTapHighlightColor: "transparent" }}
                 aria-label="Share post"
@@ -903,8 +906,8 @@ const Post = ({
               <button
                 onClick={handleQuoteClick}
                 className={`transition-colors cursor-pointer text-xs flex items-center p-1 touch-manipulation ${shouldDisableQuoting
-                    ? "text-gray-400 cursor-not-allowed"
-                    : "text-gray-600 hover:text-gray-800"
+                  ? "text-gray-400 cursor-not-allowed"
+                  : "text-gray-600 hover:text-gray-800"
                   }`}
                 style={{ WebkitTapHighlightColor: "transparent" }}
                 aria-label="Quote post"
@@ -919,8 +922,8 @@ const Post = ({
               <button
                 onClick={handleShareClick}
                 className={`transition-colors cursor-pointer p-1 touch-manipulation ${shouldDisableSharing
-                    ? "text-gray-400 cursor-not-allowed"
-                    : "text-gray-600 hover:text-gray-800"
+                  ? "text-gray-400 cursor-not-allowed"
+                  : "text-gray-600 hover:text-gray-800"
                   }`}
                 style={{ WebkitTapHighlightColor: "transparent" }}
                 aria-label="Share post"

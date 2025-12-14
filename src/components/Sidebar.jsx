@@ -15,14 +15,8 @@ import { useRouter } from "next/navigation";
 import { getPoints, getRank } from "../../action";
 import Image from "next/image";
 import QuoteIcon from "./QuoteIcon";
-
 import HelpCenterIcon from "./icons/HelpCenterIcon";
 import AnonIcon from "./icons/AnonIcon";
-import CreativesFeedIcon from "./icons/FilterIcons/CreativesFeedIcon";
-import CouplesFeedIcon from "./icons/FilterIcons/CouplesFeedIcon";
-import BookmarkFeedIcon from "./icons/FilterIcons/BookmarkFeedIcon";
-import MyPostFeedIcon from "./icons/FilterIcons/MyPostFeedIcon";
-import HelpCenter from "@/app/(protected)/help-center/page";
 import useHelpCenterStore from "@/hooks/useHelpCenter";
 
 const Sidebar = ({
@@ -490,7 +484,7 @@ const Sidebar = ({
                       {/* Info Tooltip */}
                       {showReferralInfo && (
                         <div
-                          className="absolute left-0 top-6 z-60 w-50 p-4 px-2  bg-white border border-gray-200 
+                          className="absolute left-4 top-6 z-60 w-75 p-4 px-2  bg-white border border-gray-200 
                         rounded-lg shadow-lg text-[8px] text-black/80 leading-relaxed"
                         >
                           <div className="space-y-2 text-[9.1px]">
@@ -502,9 +496,10 @@ const Sidebar = ({
                               <p>Earn 1.5 points for your first referral</p>
                               <p>Earn 2 points for your second referral</p>
                               <p>Earn 2.5 points for your third referral...</p>
-                              <p className="">*Maximum of 8 referrals max</p>
+                              <br></br>
+                              <p className="">*Maximum of 7 referrals</p>
                             </div>
-                            <p className="italic text-black/60">
+                            <p>
                               The more points you earn, the more features you unlock.
                             </p>
                           </div>

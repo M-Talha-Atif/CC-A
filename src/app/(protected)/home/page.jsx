@@ -429,8 +429,9 @@ const HomePage = () => {
               <li>Earn 1.5 points for your first referral</li>
               <li>Earn 2 points for your second referral</li>
               <li>Earn 2.5 points for your third referral...</li>
-              <li>Maximum of 8 referral</li>
+              <li>Maximum of 7 referrals</li>
             </ul>
+            <br></br>
             <p className="mt-2 text-sm text-black/70">
              Top-tier point holders unlock early access to new features.
             </p>

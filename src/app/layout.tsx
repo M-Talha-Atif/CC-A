@@ -35,9 +35,9 @@ export const metadata: Metadata = {
     type: "website",
     images: [
       {
-        url: "https://cunocovo.com/android-chrome-512x512.png",
-        width: 512,
-        height: 512,
+        url: "https://cunocovo.com/for_sharing.png?v=1", // NEW IMAGE
+        width: 1281,
+        height: 1333,
         alt: "CUNO COVO",
       },
     ],
@@ -51,9 +51,9 @@ export const metadata: Metadata = {
       "CUNO COVO is a platform for wedding photographers, videographers, florists, and planners to share perspectives anonymously-soon helping couples discover aligned wedding talent.",
     images: [
       {
-        url: "https://cunocovo.com/android-chrome-512x512.png",
-        width: 512,
-        height: 512,
+        url: "https://cunocovo.com/for_sharing.png?v=1", // NEW IMAGE
+        width: 1281,
+        height: 1333,
         alt: "CUNO COVO",
       },
     ]
@@ -119,13 +119,6 @@ export default function RootLayout({
         <meta name="theme-color" content="#000000" />
         <meta name="msapplication-TileColor" content="#000000" />
         <meta name="msapplication-TileImage" content="/sms-icon.jpg" />
-
-        <meta property="og:image" content="https://cunocovo.com/android-chrome-512x512.png" />
-        <meta property="og:image:width" content="512" />
-        <meta property="og:image:height" content="512" />
-        <meta property="og:title" content="CUNO COVO" />
-        <meta property="og:description" content="CUNO COVO is a platform..." />
-
 
         {/* Preload critical fonts */}
         <link

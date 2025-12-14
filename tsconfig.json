@@ -23,6 +23,6 @@
      "@root/*": ["./*"]
     }
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "src/app/login/page.jsx", "src/app/login/components/AuthLayout.jsx", "src/app/(protected)/feed/components/FeedPage.jsx", "src/components/Portal.jsx"],
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "src/app/login/page.jsx", "src/app/login/components/AuthLayout.jsx", "src/app/(protected)/feed/components/FeedPage.jsx", "src/components/Portal.jsx", "next.config.ts"],
   "exclude": ["node_modules"]
 }

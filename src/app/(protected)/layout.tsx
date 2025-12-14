@@ -52,6 +52,8 @@ const ProtectedLayout = ({
   const [delayLayoutChange, setDelayLayoutChange] = useState(false);
 
   const { user, setUser, isAuthenticated, hasHydrated } = useUserStore();
+
+
   const router = useRouter();
   const pathname = usePathname();
 
@@ -68,18 +70,27 @@ const ProtectedLayout = ({
     return user?.rank || 0;
   }, [user?.rank]);
 
-  // UPDATED: Include delay in authentication check
+  // UPDATED: Separate authentication check from layout delay
+  // This is the TRUE authentication state - used for showing/hiding authenticated UI
   const userIsAuthenticated = useMemo(() => {
-    const actuallyAuthenticated =
-      isAuthenticated || Boolean(user && (user.id || user.email));
+    // If store hasn't hydrated yet, treat as NOT authenticated
+    if (!hasHydrated) return false;
 
-    // If user was just cleared but we're in delay period, keep showing authenticated state
-    if (delayLayoutChange && !actuallyAuthenticated) {
-      return true;
-    }
+    // Check actual authentication state
+    return isAuthenticated || Boolean(user && (user.id || user.email));
+  }, [isAuthenticated, user, hasHydrated]);
 
-    return actuallyAuthenticated;
-  }, [isAuthenticated, delayLayoutChange, user]);
+  const shouldShowAuthButtons = useMemo(() => {
+    if (!hasHydrated) return false;
+
+    // Only show auth buttons if:
+    // 1. User is NOT authenticated AND
+    // 2. We're not in the delay period (or delay has expired)
+    return !userIsAuthenticated && !delayLayoutChange;
+  }, [userIsAuthenticated, delayLayoutChange, hasHydrated]);
+
+
+
 
   // Fetch initial unread count
   useEffect(() => {
@@ -110,29 +121,6 @@ const ProtectedLayout = ({
     };
   }, [onNewNotification, offNewNotification]);
 
-  // DETECT USER LOGOUT and trigger delay
-  const prevUserRef = useRef(user);
-  // useEffect(() => {
-  //   const prevUser = prevUserRef.current;
-  //   const currentUser = user;
-
-  //   // If we had a user before and now we don't, it's a logout
-  //   if (
-  //     prevUser &&
-  //     (prevUser.id || prevUser.email) &&
-  //     (!currentUser || (!currentUser.id && !currentUser.email))
-  //   ) {
-  //     console.log("User logout detected, delaying layout change...");
-  //     setDelayLayoutChange(true);
-
-  //     // After 1.5 seconds, allow the layout to change
-  //     setTimeout(() => {
-  //       setDelayLayoutChange(false);
-  //     }, 1500);
-  //   }
-
-  //   prevUserRef.current = user;
-  // }, [user]);
 
   useEffect(() => {
 
@@ -345,6 +333,12 @@ const ProtectedLayout = ({
     router.push("/login/new-user");
   }, [router]);
 
+
+  if (!hasHydrated) {
+    return null; // or a loader if you want
+  }
+
+
   return (
     <div
       className="min-h-dvh bg-white relative overflow-hidden "
@@ -372,7 +366,8 @@ const ProtectedLayout = ({
         className="fixed top-0 left-0 right-0 flex items-center justify-between pointer-events-auto p-6 pl-5 pb-0 bg-white"
       >
         <div className="flex items-center space-x-4">
-          {userIsAuthenticated &&
+          {hasHydrated &&
+            userIsAuthenticated &&
             shouldShowBackButton &&
             !pathname.includes("/create-post") ? (
             // Show back button for chatroom and notifications
@@ -420,7 +415,7 @@ const ProtectedLayout = ({
             )}
 
           {/* Only show Sign Up/Log In buttons if not authenticated */}
-          {!userIsAuthenticated && (
+          {shouldShowAuthButtons && (
             <>
               <button
                 onClick={handleSignUp}
@@ -431,7 +426,7 @@ const ProtectedLayout = ({
               <button
                 onClick={() =>
                   router.push(
-                    "/login?flow=creative&step=login-choice&mode=login"
+                    "/login?flow=creative&step=auth&mode=login"
                   )
                 }
                 className="px-3 py-1 -mt-8 border border-black bg-black
