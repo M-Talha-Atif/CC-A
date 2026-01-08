@@ -15,6 +15,34 @@ const Page = () => {
   const { openHelpCenter } = useHelpCenterStore();
   const [showRejectedPopup, setShowRejectedPopup] = useState(false);
 
+  const handleRejectedUser = async () => {
+    try {
+      // Clear session storage
+      sessionStorage.removeItem("user_cache");
+      sessionStorage.removeItem("last_refresh");
+
+      // Clear Zustand store
+      clearUser();
+
+      // Server logout (clear cookies)
+      await logout();
+
+      // Hard redirect
+      window.location.href =
+        "/login?flow=creative&step=login-choice&mode=signup";
+    } catch (error) {
+      console.error("Logout error during rejection:", error);
+
+      // Fallback safety
+      sessionStorage.clear();
+      clearUser();
+      window.location.href =
+        "/login?flow=creative&step=login-choice&mode=signup";
+    }
+  };
+
+
+
   useEffect(() => {
     if (!hasHydrated) return;
 
@@ -29,8 +57,9 @@ const Page = () => {
         const statusResponse = await checkUserStatus();
 
         if (statusResponse.data && statusResponse.data.status === "rejected") {
-          setShowRejectedPopup(true);
+          // setShowRejectedPopup(true);
           setIsChecking(false);
+          await handleRejectedUser();
           return;
         }
 
@@ -66,7 +95,7 @@ const Page = () => {
 
         if (statusResponse.data && statusResponse.data.status === "rejected") {
           clearInterval(statusCheckInterval);
-          setShowRejectedPopup(true);
+          await handleRejectedUser();
           return;
         }
 
@@ -90,32 +119,10 @@ const Page = () => {
     };
   }, [router, hasHydrated, isAuthenticated, clearUser]);
 
-  const handleRejectedPopupClose = async () => {
-    setShowRejectedPopup(false);
 
-    try {
-      // 1. Clear session storage FIRST
-      sessionStorage.removeItem("user_cache");
-      sessionStorage.removeItem("last_refresh");
 
-      // 2. Clear Zustand store
-      clearUser();
 
-      // 3. Call server logout to clear cookies
-      await logout();
 
-      // 4. Hard redirect with full page reload
-      window.location.href =
-        "/login?flow=creative&step=login-choice&mode=signup";
-    } catch (error) {
-      console.error("Logout error during rejection:", error);
-      // Force logout even on error
-      sessionStorage.clear();
-      clearUser();
-      window.location.href =
-        "/login?flow=creative&step=login-choice&mode=signup";
-    }
-  };
 
   if (!hasHydrated) {
     return (
@@ -151,7 +158,9 @@ const Page = () => {
 
       {showRejectedPopup && (
         <SimplePopup
-          message="Referral code has reached its usage limit"
+          message="Application Status Update
+Thank you for your interest in joining CUNO COVO, User. After careful review of your application, 
+we regret to inform you that we are unable to approve your account at this time."
           buttonText="Continue"
           onClose={handleRejectedPopupClose}
         />

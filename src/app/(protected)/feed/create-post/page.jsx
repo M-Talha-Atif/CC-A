@@ -1,18 +1,11 @@
 "use client";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
-  Users,
-  Mail,
   Plus,
-  Send,
   X,
   LoaderIcon,
   ArrowLeft,
-  FileText,
   Vote,
-  Heart,
-  MessageCircle,
-  Bookmark,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { createPost, getPost } from "../../../../../action";
@@ -49,6 +42,86 @@ const CreatePage = () => {
   const hasUnsavedContentRef = useRef(false);
 
   const { isAuthenticated, hasHydrated } = useUserStore();
+
+  // Add these utility functions at the top of your component, before the component definition
+  const DRAFT_KEY = 'create-post-draft';
+
+  const saveDraft = (draftData) => {
+    try {
+      localStorage.setItem(DRAFT_KEY, JSON.stringify({
+        ...draftData,
+        timestamp: Date.now()
+      }));
+    } catch (error) {
+      console.error('Failed to save draft:', error);
+    }
+  };
+
+  const loadDraft = () => {
+    try {
+      const draft = localStorage.getItem(DRAFT_KEY);
+      if (!draft) return null;
+
+      const parsed = JSON.parse(draft);
+      // Only load drafts from last 24 hours
+      const isRecent = Date.now() - parsed.timestamp < 24 * 60 * 60 * 1000;
+      return isRecent ? parsed : null;
+    } catch (error) {
+      console.error('Failed to load draft:', error);
+      return null;
+    }
+  };
+
+  const clearDraft = () => {
+    try {
+      localStorage.removeItem(DRAFT_KEY);
+    } catch (error) {
+      console.error('Failed to clear draft:', error);
+    }
+  };
+
+  // Add this after your existing state declarations
+  const [isDraftRestored, setIsDraftRestored] = useState(false);
+
+  // Restore draft on mount
+  useEffect(() => {
+    if (!isDraftRestored && hasHydrated && isAuthenticated) {
+      const draft = loadDraft();
+      if (draft) {
+        setSubject(draft.subject || '');
+        setContent(draft.content || '');
+        setSelectedCategories(draft.selectedCategories || []);
+        setType(draft.type || 'text');
+        setPollOptions(draft.pollOptions || ['', '']);
+
+        toast.info('Draft restored', { duration: 2000 });
+      }
+      setIsDraftRestored(true);
+    }
+  }, [hasHydrated, isAuthenticated, isDraftRestored]);
+
+  // Auto-save draft every 2 seconds when content changes
+  useEffect(() => {
+    if (!isDraftRestored) return;
+
+    const timeoutId = setTimeout(() => {
+      if (hasUnsavedContent()) {
+        saveDraft({
+          subject,
+          content,
+          selectedCategories,
+          type,
+          pollOptions
+        });
+      }
+    }, 2000);
+
+    return () => clearTimeout(timeoutId);
+  }, [subject, content, selectedCategories, type, pollOptions, isDraftRestored]);
+
+  // Clear draft on successful submission - modify your handleSubmit
+
+
 
   useEffect(() => {
     document.body.style.overflow = "hidden";
@@ -92,29 +165,6 @@ const CreatePage = () => {
       (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
   }, []);
 
-  // // iOS-safe height update function
-  // const updateTextareaHeight = useCallback((textarea, maxHeight) => {
-  //   if (!textarea || isUpdatingRef.current) return;
-
-  //   const key = textarea === textareaRef.current ? "content" : "subject";
-
-  //   try {
-  //     isUpdatingRef.current = true;
-
-  //     // Only update if height actually changed
-  //     const currentScrollHeight = textarea.scrollHeight;
-  //     const newHeight = Math.min(currentScrollHeight, maxHeight);
-
-  //     if (lastHeightRef.current[key] !== newHeight) {
-  //       textarea.style.height = `${newHeight}px`;
-  //       lastHeightRef.current[key] = newHeight;
-  //     }
-  //   } catch (error) {
-  //     console.warn("Textarea resize failed:", error);
-  //   } finally {
-  //     isUpdatingRef.current = false;
-  //   }
-  // }, []);
 
   // // iOS-safe content change handler
   const handleContentChange = useCallback(
@@ -194,8 +244,6 @@ const CreatePage = () => {
       console.error('Subject change error:', error);
     }
   }, []);
-
-
 
   useEffect(() => {
     if (type === "poll") {
@@ -315,8 +363,6 @@ const CreatePage = () => {
     );
   };
 
-
-
   // Update the ref when content changes, but don't trigger effects
   useEffect(() => {
     hasUnsavedContentRef.current = hasUnsavedContent();
@@ -412,6 +458,7 @@ const CreatePage = () => {
 
   const handleSmoothExit = () => {
     setIsExiting(true);
+    clearDraft(); // clear draft
     // Wait for animation to complete before navigating
     setTimeout(() => {
       router.push("/feed/new");
@@ -484,9 +531,6 @@ const CreatePage = () => {
 
     return `${paddedFirst}\n${second}`;
   }
-
-
-
 
   const handlePollOptionChange = (value, index) => {
     const formatted = formatOption(value);
@@ -575,9 +619,10 @@ const CreatePage = () => {
       const result = await createPost(payload);
 
       if (result.success) {
+        clearDraft(); // clear draft
         delete window.handleCreatePageBack;
         toast.success("Post created successfully!");
-        router.push("/feed");
+        router.push("/feed/new");
       } else {
         // Handle rate limit error specifically
         if (result.error.status === 429) {

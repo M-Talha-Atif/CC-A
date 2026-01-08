@@ -319,7 +319,8 @@ export const checkEmailExists = async (email) => {
 
     return {
       success: true,
-      exists: data.data.exists,
+      exists: data.data.exists,   
+       reason: data.data.reason,
     };
   } catch (error) {
     return {
@@ -1707,3 +1708,52 @@ export async function checkInstagramExists(instagram) {
   }
 }
 
+// Report a post
+export const reportPost = async (postId) => {
+  try {
+    const response = await makeAuthenticatedRequest(
+      `${process.env.NEXT_PUBLIC_BASE_URL}api/post/${postId}/report`,
+      {
+        method: "POST",
+        data: {},
+      }
+    );
+
+    console.log(response)
+
+    return {
+      success: true,
+      data: response.data,
+      message: "Post reported successfully",
+    };
+  } catch (error) {
+    console.error("Report post error:", error);
+    return {
+      success: false,
+      error: error.response?.data?.error || "Failed to report post",
+    };
+  }
+};
+
+// Check if user has already reported a post
+export const checkUserReport = async (postId) => {
+  try {
+    const response = await makeAuthenticatedRequest(
+      `${process.env.NEXT_PUBLIC_BASE_URL}api/post/${postId}/report/check`,
+      {
+        method: "GET",
+      }
+    );
+
+    return {
+      success: true,
+      data: response.data,
+    };
+  } catch (error) {
+    console.error("Check report error:", error);
+    return {
+      success: false,
+      error: error.response?.data?.error || "Failed to check report status",
+    };
+  }
+};

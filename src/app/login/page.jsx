@@ -42,14 +42,12 @@ import { usePasswordValidation } from './hooks/usePasswordValidation';
 import { useConfirmPasswordValidation } from './hooks/useConfirmPasswordValidation';
 import { useWebsiteValidation } from './hooks/useWebsiteValidation';
 import { useInstagramValidation } from './hooks/useInstagramValidation';
-import ValidationMessage from './components/ValidationMessage';
 import NavigationButtons from './components/NavigationButtons';
 import PasswordRequirements from './components/PasswordRequirements';
 import LoadingOverlay from './components/LoadingOverlay';
 import LoadingFallback from './components/LoadingFallback';
 import TermsFooter from './components/TermsFooter';
 import InputField from './components/InputField';
-import PasswordToggleButton from './components/PasswordToggleButton'
 
 
 const page = () => {
@@ -59,7 +57,7 @@ const page = () => {
   const [userType, setUserType] = useState("");
   const userTypeRef = useRef(userType);
   const { openHelpCenter } = useHelpCenterStore();
-  const [currentStep, setCurrentStep] = useState("email-choice");
+  const [currentStep, setCurrentStep] = useState(null); // start as null
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -86,6 +84,8 @@ const page = () => {
   const [verificationStatus, setVerificationStatus] = useState(null);
 
   const [initializing, setInitializing] = useState(true);
+
+  const referralTimeoutRef = useRef(null);
 
   const {
     emailValidation,
@@ -144,198 +144,108 @@ const page = () => {
     const step = searchParams.get("step");
     const mode = searchParams.get("mode");
 
-    if (flow === "creative" && step === "auth" && mode) {
+    // Only apply URL params if user is NOT authenticated
+    // This prevents URL params from overriding server progress
+    if (!isAuthenticated && flow === "creative" && step === "auth" && mode) {
       setUserType("creative");
       setCurrentStep("auth");
     }
 
-  }, [isHydrated, searchParams]);
+  }, [isHydrated, searchParams, isAuthenticated]);
 
   useEffect(() => {
     const initializeOnboarding = async () => {
-      if (!isAuthenticated || !user) {
-        setInitializing(false);
-        return;
-      }
+      let stepToSet = "auth"; // default fallback
 
       try {
-        setInitializing(true);
-        setLoadingMessage("Initializing your account...");
-
-        if (user.userType === "couple") {
-          setLoadingMessage("Redirecting to your feed...");
-          router.push("/feed/couple");
-          return;
-        }
-
-        const response = await getOnboardingProgress();
-
-        if (response.success) {
-          const { progress, nextStep, user: serverUser } = response.data;
-
-          if (serverUser && serverUser.personalReferralCode) {
-            setUser((prevUser) => ({
-              ...prevUser,
-              referralCode: serverUser.personalReferralCode,
-              points: serverUser.points || prevUser.points,
-              rank: serverUser.rank || prevUser.rank,
-            }));
+        if (!isAuthenticated || !user) {
+          stepToSet = loadFromStorage(STORAGE_KEYS.CURRENT_STEP, "auth");
+        } else {
+          if (user.userType === "couple") {
+            router.push("/feed/couple");
+            return;
           }
 
-          if (progress.onboardingCompleted) {
-            setLoadingMessage("Redirecting to your account...");
+          const response = await getOnboardingProgress();
+          if (response.success) {
+            const { nextStep, user: serverUser, progress } = response.data;
 
-            try {
+            // update user
+            if (serverUser?.personalReferralCode) {
+              setUser((prev) => ({
+                ...prev,
+                referralCode: serverUser.personalReferralCode,
+                points: serverUser.points || prev.points,
+                rank: serverUser.rank || prev.rank,
+              }));
+            }
+
+            // redirect if onboarding completed
+            if (progress.onboardingCompleted) {
               const statusResponse = await checkUserStatus();
-
-              if (
-                statusResponse.data &&
-                statusResponse.data.status === "pending"
-              ) {
+              if (statusResponse?.data?.status === "pending") {
                 router.push("/waiting");
+              } else if (user.userType === "creative") {
+                router.push(user.isNewUser ? "/home" : "/feed/new");
               } else {
-                if (user.userType === "couple") {
-                  router.push("/feed/couple");
-                } else if (user.userType === "creative") {
-                  if (user.isNewUser) {
-                    router.push("/home");
-                  } else {
-                    router.push("/feed/new");
-                  }
-                } else {
-                  router.push("/feed/new");
-                }
+                router.push("/feed/new");
               }
               return;
-            } catch (statusError) {
-              console.error("Status check error:", statusError);
-              router.push("/waiting");
-              return;
             }
-          }
 
-          // Update form data - remove businessName references since we're skipping that step
-          setFormData((prevData) => ({
-            email: serverUser?.email || prevData.email,
-            password: prevData.password,
-            referralCode:
-              progress.formData?.referralCode || prevData.referralCode,
-            businessName: serverUser?.profile?.businessName || "", // Keep for backend compatibility but don't collect
-            website:
-              progress.formData?.website ||
-              serverUser?.profile?.website ||
-              prevData.website,
-            instagram:
-              progress.formData?.instagram ||
-              serverUser?.profile?.instagram ||
-              prevData.instagram,
-            creativeDomain:
-              progress.formData?.creativeDomain ||
-              serverUser?.profile?.creativeDomains ||
-              prevData.creativeDomain,
-            phone:
-              progress.formData?.phone ||
-              serverUser?.profile?.phone ||
-              prevData.phone,
-            otpCode: prevData.otpCode,
-          }));
+            // set step from server
+            stepToSet = nextStep?.step || loadFromStorage(STORAGE_KEYS.CURRENT_STEP, "auth");
 
-          if (nextStep?.step && nextStep.step !== "landing") {
-            if (
-              nextStep.step === "email-verification" &&
-              serverUser?.emailVerified
-            ) {
-              const emailVerificationIndex =
-                steps.indexOf("email-verification");
-              const nextStepAfterVerification =
-                steps[emailVerificationIndex + 1];
-
-              setTimeout(() => {
-                setCurrentStep(nextStepAfterVerification || "phone-number");
-                setInitializing(false);
-              }, 100);
-            } else {
-              setTimeout(() => {
-                setCurrentStep(nextStep.step);
-                setInitializing(false);
-              }, 100);
-            }
+            // set form data
+            setFormData((prev) => ({
+              email: serverUser?.email || prev.email,
+              password: prev.password,
+              referralCode: progress.formData?.referralCode || prev.referralCode,
+              businessName: serverUser?.profile?.businessName || "",
+              website: progress.formData?.website || serverUser?.profile?.website || prev.website,
+              instagram: progress.formData?.instagram || serverUser?.profile?.instagram || prev.instagram,
+              creativeDomain: progress.formData?.creativeDomain || serverUser?.profile?.creativeDomains || prev.creativeDomain,
+              phone: progress.formData?.phone || serverUser?.profile?.phone || prev.phone,
+              otpCode: prev.otpCode,
+            }));
           } else {
-            setInitializing(false);
+            stepToSet = loadFromStorage(STORAGE_KEYS.CURRENT_STEP, "auth");
           }
         }
-      } catch (error) {
-        console.error("Failed to initialize onboarding:", error);
+      } catch (err) {
+        console.error("Onboarding init failed:", err);
+        stepToSet = loadFromStorage(STORAGE_KEYS.CURRENT_STEP, "auth");
+      } finally {
+        setCurrentStep(stepToSet);
+        setIsHydrated(true);
         setInitializing(false);
+        setLoadingMessage("");
       }
     };
 
     initializeOnboarding();
   }, [isAuthenticated, user?.id, router]);
 
-  useEffect(() => {
-    setIsHydrated(true);
-    setCurrentStep(loadFromStorage(STORAGE_KEYS.CURRENT_STEP, "landing"));
-    setFormData(
-      loadFromStorage(STORAGE_KEYS.FORM_DATA, {
-        email: "",
-        password: "",
-        referralCode: "",
-        businessName: "",
-        website: "",
-        instagram: "",
-        creativeDomain: [],
-        phone: "",
-        otpCode: "",
-      })
-    );
-    setReferralCompleted(
-      loadFromStorage(STORAGE_KEYS.REFERRAL_COMPLETED, false)
-    );
-  }, []);
 
   const handleOnboardingBack = () => {
-    switch (currentStep) {
+    const currentIndex = steps.indexOf(currentStep);
 
-      //  UPDATE "auth" case as no longer need continue page for me
-      case "auth":
-        router.push("/login"); // Go back to landing
-        break;
-
-      case "email-verification":
-        setCurrentStep("auth");
-        break;
-
-      case "phone-number":
-        setCurrentStep("email-verification");
-        break;
-
-      case "referral-code":
-        setCurrentStep("phone-number");
-        break;
-
-      case "business-website":
-        setCurrentStep("referral-code");
-        break;
-
-      case "business-instagram":
-        setCurrentStep("business-website");
-        break;
-
-      case "creative-domain":
-        setCurrentStep("business-instagram");
-        break;
-
-      case "landing":
-      default:
-        if (window.history.length > 1) {
-          router.back();
-        } else {
-          router.push("/");
-        }
-        break;
+    // Safety check
+    if (currentIndex === -1) {
+      router.push("/");
+      return;
     }
+
+    // If user is on first step (auth)
+    if (currentIndex === 0) {
+      router.push("/login");
+      return;
+    }
+
+    // Move to previous step
+    setCurrentStep(steps[currentIndex - 1]);
   };
+
 
   useEffect(() => {
     const handlePopState = (event) => {
@@ -449,8 +359,7 @@ const page = () => {
   };
 
   const steps = [
-    // "landing",
-    "landing",
+
     "auth", // Single auth step (login or signup)
     "email-verification",
     "phone-number",
@@ -461,37 +370,100 @@ const page = () => {
   ];
 
   const handleInputChange = (field, value) => {
-    if (field === "phone") {
-      const formattedPhone = formatPhoneNumber(value);
-      setFormData((prev) => ({ ...prev, [field]: formattedPhone }));
-    } else if (field === "confirmPassword") {
-      setFormData((prev) => ({ ...prev, [field]: value }));
-      // Use the hook's handler - pass both passwords
-      handleConfirmPasswordChange(formData.password, value);
+    // Normalize referral code
+    const normalizedValue =
+      field === "referralCode" ? value.trim().toUpperCase() : value;
 
-    } else {
-      setFormData((prev) => ({ ...prev, [field]: value }));
-    }
+    // Always update state ONCE
+    setFormData((prev) => ({
+      ...prev,
+      [field]:
+        field === "phone" ? formatPhoneNumber(normalizedValue) : normalizedValue,
+    }));
 
-    if (field === "password") {
-      handlePasswordChange(value);
-      if (authMode === "signup" && formData.confirmPassword) {
-        handleConfirmPasswordChange(value, formData.confirmPassword);
+    // --------------------
+    // Referral Code Logic
+    // --------------------
+    if (field === "referralCode") {
+      const normalized = value
+        .toUpperCase()
+        .replace(/[^A-Z0-9]/g, "") // allow only alphanumeric
+        .slice(0, 6); // HARD LIMIT
+
+      setFormData((prev) => ({
+        ...prev,
+        referralCode: normalized,
+      }));
+
+      setReferralError("");
+
+      if (referralTimeoutRef.current) {
+        clearTimeout(referralTimeoutRef.current);
       }
+
+      if (normalized.length === 6) {
+        referralTimeoutRef.current = setTimeout(async () => {
+          try {
+            await verifyReferralCode({ referralCode: normalized });
+            setReferralError("");
+          } catch {
+            setReferralError("Invalid referral code");
+          }
+        }, 500);
+      }
+
+      return;
     }
 
-    else if (field === "website") {
-      setFormData((prev) => ({ ...prev, [field]: value }));
-      // Use the hook's handler
+    // --------------------
+    // Password
+    // --------------------
+    if (field === "password") {
+      if (authMode === "signup") {
+        handlePasswordChange(value);
+
+        if (formData.confirmPassword) {
+          handleConfirmPasswordChange(value, formData.confirmPassword);
+        }
+      }
+      return;
+    }
+
+    // --------------------
+    // Confirm Password
+    // --------------------
+    if (field === "confirmPassword") {
+      handleConfirmPasswordChange(formData.password, value);
+      return;
+    }
+
+    // --------------------
+    // Website
+    // --------------------
+    if (field === "website") {
       handleWebsiteChange(value);
+      return;
     }
 
-    else if (field === "instagram") {
-      setFormData((prev) => ({ ...prev, [field]: value }));
-      // Use the hook's handler
-      handleInstagramChange(value);
+    // --------------------
+    // Instagram
+    // --------------------
+    if (field === "instagram") {
+      let cleanValue = value.startsWith("@")
+        ? value.slice(1)
+        : value;
+
+      // also remove accidental @ anywhere
+      cleanValue = cleanValue.replace(/@/g, "");
+
+      setFormData((prev) => ({
+        ...prev,
+        instagram: cleanValue,
+      }));
+      handleInstagramChange(cleanValue);
     }
   };
+
 
   const goToNextStep = async (stepCompleted = null) => {
     const currentIndex = steps.indexOf(currentStep);
@@ -506,10 +478,36 @@ const page = () => {
 
   const goToPrevStep = () => {
     const currentIndex = steps.indexOf(currentStep);
-    if (currentIndex > 0) {
-      setCurrentStep(steps[currentIndex - 1]);
+
+    if (currentIndex <= 0) return;
+
+    const prevStep = steps[currentIndex - 1];
+
+    if (prevStep === "referral-code") {
+      return;
     }
+
+
+    setCurrentStep(prevStep);
   };
+
+
+
+  const isBackAllowed = React.useMemo(() => {
+    const currentIndex = steps.indexOf(currentStep);
+    const result = currentIndex > 0 && !steps.slice(0, currentIndex).includes("referral-code");
+    console.log(result)
+    return result;
+  }, [currentStep]);
+
+  useEffect(() => {
+    if (!currentStep) return;
+
+    saveToStorage(STORAGE_KEYS.CURRENT_STEP, currentStep);
+  }, [currentStep]);
+
+
+
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -572,7 +570,9 @@ const page = () => {
           );
 
           // Check user's current email verification status
+          console.log(user)
           if (user && user.id) {
+            console.log("user exists")
             const emailVerificationStatus = !isNewUser
               ? await checkEmailVerificationStatus()
               : { success: true, data: { emailVerified: false } };
@@ -646,58 +646,108 @@ const page = () => {
             }
             return;
           }
+          console.log(user.phone)
 
           // User needs to complete onboarding - determine next step
-          if (!userProfile.phone) {
-            console.log("User needs to complete phone number step");
+          setLoadingMessage("Loading your progress...");
+
+          try {
+            const progressResponse = await getOnboardingProgress();
+
+            if (progressResponse.success) {
+              const { nextStep, progress, user: serverUser } = progressResponse.data;
+
+              // Update form data from server
+              setFormData((prev) => ({
+                ...prev,
+                email: serverUser?.email || prev.email,
+                referralCode: progress.formData?.referralCode || prev.referralCode,
+                website: progress.formData?.website || serverUser?.profile?.website || prev.website,
+                instagram: progress.formData?.instagram || serverUser?.profile?.instagram || prev.instagram,
+                creativeDomain: progress.formData?.creativeDomain || serverUser?.profile?.creativeDomains || prev.creativeDomain,
+                phone: progress.formData?.phone || serverUser?.profile?.phone || prev.phone,
+              }));
+
+              // Update user state
+              setUser((prev) => ({
+                ...prev,
+                ...serverUser,
+              }));
+
+              // Use server's next step
+              const stepToGo = nextStep?.step || "phone-number";
+              console.log("Resuming from server step:", stepToGo);
+              setCurrentStep(stepToGo);
+            } else {
+              // Fallback if progress fetch fails
+              setCurrentStep("phone-number");
+            }
+          } catch (progressError) {
+            console.error("Failed to fetch progress:", progressError);
             setCurrentStep("phone-number");
-            return;
           }
 
-          if (!userProfile.businessName) {
-            setCurrentStep("business-name");
-            return;
-          }
+          // if (!user.phone) {
 
-          if (!userProfile.website) {
-            setCurrentStep("business-website");
-            return;
-          }
+          //   console.log("User needs to complete phone number step");
+          //   setCurrentStep("phone-number");
+          //   return;
+          // }
 
-          if (!userProfile.instagram) {
-            setCurrentStep("business-instagram");
-            return;
-          }
+          // if (!user.assignedReferralCode) {
+          //   setCurrentStep("referral-code");
+          //   return;
+          // }
 
-          if (
-            !userProfile.creativeDomains ||
-            userProfile.creativeDomains.length === 0
-          ) {
-            setCurrentStep("creative-domain");
-            return;
-          }
+          // if (!user.website) {
+          //   setCurrentStep("business-website");
+          //   return;
+          // }
+
+          // if (!user.instagram) {
+          //   setCurrentStep("business-instagram");
+          //   return;
+          // }
+
+          // if (
+          //   !user.creativeDomains ||
+          //   userProfile.creativeDomains.length === 0
+          // ) {
+          //   setCurrentStep("creative-domain");
+          //   return;
+          // }
 
           // If all profile fields are filled but onboarding not marked complete
+
           setLoadingMessage("Finalizing your account...");
 
           try {
             const statusResponse = await checkUserStatus();
+            console.log(statusResponse)
 
             // Redirect based on user type and status
             if (user.userType === "couple") {
               router.push("/feed/couple");
             } else if (user.userType === "creative") {
-              if (statusResponse?.data?.status === "pending") {
+              if (statusResponse?.data?.status === "pending" && statusResponse?.data?.profileCompleted === true) {
+                console.log("this block code executed")
                 router.push("/waiting");
               } else {
-                router.push("/feed/new");
+                if (statusResponse?.data?.profileCompleted === true) {
+                  router.push("/feed/new");
+                }
+
               }
             } else {
               // Fallback
-              if (statusResponse?.data?.status === "pending") {
+              if (statusResponse?.data?.status === "pending" && statusResponse?.data?.profileCompleted === true) {
                 router.push("/waiting");
               } else {
-                router.push("/feed/new");
+                if (statusResponse?.data?.profileCompleted === true) {
+                  console.log("we are here")
+                  router.push("/feed/new");
+                }
+
               }
             }
           } catch (statusError) {
@@ -773,8 +823,6 @@ const page = () => {
             "referral-code"
           );
 
-          // Go to business name step
-          // setCurrentStep("business-name");
           setCurrentStep("business-website");
         } catch (error) {
           console.error("Invalid referral code:", error);
@@ -999,7 +1047,6 @@ const page = () => {
   );
 
 
-
   const handleResetPassword = async (e) => {
     e.preventDefault();
 
@@ -1038,35 +1085,6 @@ const page = () => {
     if (initializing) return null;
 
     switch (currentStep) {
-      case "landing":
-        return (
-          <div className="w-full max-w-md text-center">
-            <h1 className="text-3xl font-semibold text-gray-900 mb-8 font-nunito">
-              CUNO COVO
-            </h1>
-            <div className="space-y-4">
-              <button
-                onClick={() => {
-                  setUserType("creative");
-                  router.push("/login?flow=creative&step=auth&mode=signup");
-                }}
-                className="w-full border-2 border-gray-300 text-gray-700 py-4 px-6 rounded-xl font-semibold hover:border-gray-400 transition-colors flex items-center justify-between"
-              >
-                <span>Creatives</span>
-              </button>
-
-              <button
-                onClick={() => {
-                  setUserType("couple");
-                  setCurrentStep("email-choice"); // New step for couples
-                }}
-                className="w-full border-2 border-gray-300 text-gray-700 py-4 px-6 rounded-xl font-semibold hover:border-gray-400 transition-colors flex items-center justify-between"
-              >
-                <span>Couples</span>
-              </button>
-            </div>
-          </div>
-        );
 
       case "auth":
         return (
@@ -1084,8 +1102,7 @@ const page = () => {
                       }}
                       onFocus={() => {
                         if (formData.email) {
-                          handleEmailChange(formData.email);
-                          setShowEmailError(true);
+                          handleEmailChange(formData.email);;
                         }
                       }}
                       disabled={isLoading}
@@ -1193,12 +1210,7 @@ const page = () => {
                         "/login?flow=creative&step=login-choice&mode=login"
                       )
                       setFormData(prev => ({ ...prev, password: "", confirmPassword: "", email: "" }));
-                      setConfirmPassword("");
                     }
-
-
-
-
                     }
                   >
                     Sign in here
@@ -1214,7 +1226,7 @@ const page = () => {
                         "/login?flow=creative&step=login-choice&mode=signup"
                       )
                       setFormData(prev => ({ ...prev, password: "", confirmPassword: "", email: "" }));
-                      setConfirmPassword("")
+
                     }
 
                     }
@@ -1401,10 +1413,15 @@ const page = () => {
         );
 
       case "referral-code":
+        const isReferralDisabled = Boolean(formData.referralCode && referralCompleted);
         return (
           <div className="w-full max-w-md">
             <div className="text-center mb-8">
-              <p className="text-gray-600 mt-2">Enter the referral code</p>
+              <p className="text-gray-600 mt-2">
+                {isReferralDisabled
+                  ? "Your referral code has been verified"
+                  : "Enter the referral code"}
+              </p>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-6">
@@ -1413,15 +1430,24 @@ const page = () => {
                   type="text"
                   value={formData.referralCode}
                   onChange={(e) => handleInputChange("referralCode", e.target.value)}
-                  disabled={isLoading}
-                  placeholder="0000"
+                  disabled={isLoading || isReferralDisabled}
+                  placeholder="000000"
+                  maxLength={6}
                   required
-                  className="text-center text-lg tracking-widest"
+                  className={`text-center text-lg tracking-widest ${isReferralDisabled ? 'bg-gray-100 cursor-not-allowed' : ''
+                    }`}
                 />
                 {referralError && (
                   <p className="mt-2 text-sm text-red-600 text-left">
                     {referralError}
                   </p>
+                )}
+                {/* Success indicator */}
+                {isReferralDisabled && (
+                  <div className="mt-2 flex items-center gap-2 text-green-600 text-sm justify-center">
+                    <CheckCircle size={16} />
+                    <span>Referral code verified</span>
+                  </div>
                 )}
               </div>
 
@@ -1433,14 +1459,7 @@ const page = () => {
                   : "border-gray-300 text-gray-700 hover:border-gray-400"
                   }`}
               >
-                {isLoading ? (
-                  <>
-                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-gray-400"></div>
-                    Verifying...
-                  </>
-                ) : (
-                  "Continue"
-                )}
+                Continue
               </button>
             </form>
           </div>
@@ -1478,6 +1497,7 @@ const page = () => {
               <NavigationButtons
                 onNext={handleSubmit}
                 onBack={goToPrevStep}
+                showBack={isBackAllowed} // compute dynamically
                 canContinue={websiteValidation.isValid}
               />
             </form>
@@ -1660,7 +1680,6 @@ const page = () => {
   const handlePasswordFieldFocus = () => {
     if (formData.email) {
       handleEmailChange(formData.email);
-      setShowEmailError(true);
     }
   };
 
@@ -1680,14 +1699,13 @@ const page = () => {
         }}
       />
 
-      <LoadingFallback />
-      <LoadingOverlay />
+      <LoadingFallback initializing={initializing} />
+      <LoadingOverlay isLoading={isLoading} initializing={initializing} />
 
       {!initializing && (
         <AuthLayout
           showLogout={
             ![
-              "landing",
               "login-choice",
               "auth",
               "email-choice",

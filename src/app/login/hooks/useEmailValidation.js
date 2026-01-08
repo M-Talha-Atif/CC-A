@@ -47,9 +47,20 @@ export const useEmailValidation = (authMode = 'signup', debounceMs = 800) => {
 
       if (authMode === 'signup') {
         if (response.success && response.exists) {
+          // Handle different reasons for existence
+          const reason = response.reason || 'email_exists';
+
+          let message = '';
+          if (reason === 'domain_exists') {
+            const domain = email.split('@')[1];
+            message = `This email domain (${domain}) is already in use.`;
+          } else {
+            message = 'This email is already in use. Try to login.';
+          }
+
           setEmailValidation({
             isValid: false,
-            message: 'This email is already in use. Try to login.',
+            message,
             type: 'error',
           });
           return;
@@ -111,7 +122,7 @@ export const useEmailValidation = (authMode = 'signup', debounceMs = 800) => {
   const handleEmailChange = (email) => {
     setShowError(false);
     if (typingTimer.current) clearTimeout(typingTimer.current);
-    
+
     typingTimer.current = setTimeout(() => {
       validateEmail(email);
       setShowError(true);

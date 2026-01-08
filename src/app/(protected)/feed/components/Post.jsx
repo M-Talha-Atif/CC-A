@@ -15,7 +15,6 @@ import {
 
 import { useRouter } from "next/navigation";
 import Toast from "../../../../components/Toast";
-import ChatroomTimer from "../chatroom/components/ChatroomTimer";
 import SharePreview from "./SharePreview";
 import useUserStore from "../../../../store/userStore";
 import { deletePost, fetchComments } from "../../../../../action";
@@ -28,6 +27,7 @@ import HeartIcon from "@/components/HeartIcon";
 import SaveIcon from "@/components/SaveIcon";
 import InfoIcon from "@/components/InfoIcon";
 import { toast, Toaster } from "sonner";
+import { reportPost, checkUserReport } from "../../../../../action";
 
 export const formatTimestamp = (dateString) => {
   const date = new Date(dateString);
@@ -221,6 +221,73 @@ const Post = ({
   const [timeRemaining, setTimeRemaining] = useState(null);
   const [canDelete, setCanDelete] = useState(false);
   const { user, isAuthenticated } = useUserStore();
+  const [hasReported, setHasReported] = useState(false);
+  const [isReporting, setIsReporting] = useState(false);
+  const [isOwnPost, setIsOwnPost] = useState(false);
+
+  useEffect(() => {
+    const checkReportStatus = async () => {
+      if (isAuthenticated && post.id) {
+        try {
+          const response = await checkUserReport(post.id);
+          if (response.success) {
+            setHasReported(response.data.hasReported);
+            setIsOwnPost(response.data.isOwnPost || false); // Set if it's user's own post
+          }
+        } catch (error) {
+          console.error("Failed to check report status:", error);
+        }
+      }
+    };
+
+    checkReportStatus();
+  }, [post.id, isAuthenticated]);
+
+  // Update the handleReportSubmit function
+  const handleReportSubmit = async (e) => {
+    if (e) {
+      e.stopPropagation();
+      e.preventDefault();
+    }
+
+    // NEW: Check if it's user's own post
+    if (isOwnPost) {
+      toast.error("You cannot report your own post");
+      setShowReportModal(false);
+      return;
+    }
+
+    if (hasReported) {
+      toast.error("You have already reported this post");
+      setShowReportModal(false);
+      return;
+    }
+
+    setIsReporting(true);
+
+    try {
+      const response = await reportPost(post.id);
+
+      if (response.success) {
+        setHasReported(true);
+        toast.success("Post reported successfully");
+      } else {
+        // Handle specific error messages
+        if (response.error === "You cannot report your own post") {
+          setIsOwnPost(true);
+          toast.error("You cannot report your own post");
+        } else {
+          toast.error(response.error || "Failed to report post");
+        }
+      }
+    } catch (error) {
+      console.error("Report submission failed:", error);
+      toast.error("Failed to report post");
+    } finally {
+      setIsReporting(false);
+      setShowReportModal(false);
+    }
+  };
 
   // Check if user is couple type
   const isCouple = user?.userType === "couple";
@@ -528,14 +595,6 @@ const Post = ({
     setShowReportModal(false);
   };
 
-  const handleReportSubmit = (e) => {
-    if (e) {
-      e.stopPropagation();
-      e.preventDefault();
-    }
-    toast("Post Reported");
-    setShowReportModal(false);
-  };
 
   const handleSharePreviewClose = () => {
     setShowSharePreview(false);
@@ -967,22 +1026,40 @@ const Post = ({
                     >
                       <div className="text-center">
                         <p className="text-gray-600 text-xs mb-3">
-                          Report this post for containing abuse, harassment, or
-                          spam.
+                          {isOwnPost
+                            ? "You cannot report your own post"
+                            : hasReported
+                              ? "You have already reported this post"
+                              : "Report this post for containing abuse, harassment, or spam."}
                         </p>
 
                         <div className="space-y-3">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              e.preventDefault();
-                              handleReportSubmit();
-                            }}
-                            className="w-full bg-black text-white py-1 px-3 rounded-3xl hover:bg-gray-600 transition-colors font-medium touch-manipulation"
-                            style={{ WebkitTapHighlightColor: "transparent" }}
-                          >
-                            Report
-                          </button>
+                          {isOwnPost || hasReported ? (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                e.preventDefault();
+                                handleReportModalClose();
+                              }}
+                              className="w-full bg-gray-500 text-white py-1 px-3 rounded-3xl hover:bg-gray-600 transition-colors font-medium touch-manipulation"
+                              style={{ WebkitTapHighlightColor: "transparent" }}
+                            >
+                              Close
+                            </button>
+                          ) : (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                e.preventDefault();
+                                handleReportSubmit(e);
+                              }}
+                              disabled={isReporting}
+                              className="w-full bg-black text-white py-1 px-3 rounded-3xl hover:bg-gray-600 transition-colors font-medium touch-manipulation disabled:opacity-50 disabled:cursor-not-allowed"
+                              style={{ WebkitTapHighlightColor: "transparent" }}
+                            >
+                              {isReporting ? "Reporting..." : "Report"}
+                            </button>
+                          )}
                         </div>
                       </div>
                     </div>
