@@ -16,6 +16,8 @@ import useUserStore from "../../../../../store/userStore";
 import { toast, Toaster } from "sonner";
 import InfoIcon from "@/components/InfoIcon";
 import ChatIcon from "@/components/ChatIcon";
+import { reportComment, checkUserCommentReport } from "../../../../../../action";
+import ReportButton from "./ReportButton";
 
 const ChatMessage = ({
   message,
@@ -37,9 +39,49 @@ const ChatMessage = ({
   const [showReportModal, setShowReportModal] = useState(null);
   const editTextareaRef = useRef(null);
   const [visibleReplies, setVisibleReplies] = useState({});
+  const [isReportingComment, setIsReportingComment] = useState(false);
 
+  const { user, isAuthenticated } = useUserStore();
+  const [commentReports, setCommentReports] = useState({});
 
-  const { user } = useUserStore();
+  // Check report status for all comments in the thread
+  useEffect(() => {
+    const checkAllCommentReports = async () => {
+      if (isAuthenticated) {
+        const allCommentIds = [message.id];
+
+        // Collect all reply IDs
+        const collectReplyIds = (replies) => {
+          if (!replies) return;
+          for (const reply of replies) {
+            allCommentIds.push(reply.id);
+            collectReplyIds(reply.replies);
+          }
+        };
+        collectReplyIds(message.replies || []);
+
+        // Check each comment
+        for (const commentId of allCommentIds) {
+          try {
+            const response = await checkUserCommentReport(commentId);
+            if (response.success) {
+              setCommentReports(prev => ({
+                ...prev,
+                [commentId]: {
+                  hasReported: response.data.hasReported,
+                  isOwnComment: response.data.isOwnComment || false
+                }
+              }));
+            }
+          } catch (error) {
+            console.error(`Failed to check comment ${commentId} report status:`, error);
+          }
+        }
+      }
+    };
+
+    checkAllCommentReports();
+  }, [message.id, isAuthenticated]);
 
   const isCoupleUser = () => {
     return user?.userType === "couple";
@@ -50,19 +92,17 @@ const ChatMessage = ({
       if (showOptionsMenu && !event.target.closest(".options-menu-container")) {
         setShowOptionsMenu(null);
       }
-      if (showReportModal && !event.target.closest(".report-modal-container")) {
-        setShowReportModal(null);
-      }
+      // Removed report modal click outside handling - now handled by backdrop
     };
 
-    if (showOptionsMenu || showReportModal) {
+    if (showOptionsMenu) {
       document.addEventListener("mousedown", handleClickOutside);
     }
 
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [showOptionsMenu, showReportModal]);
+  }, [showOptionsMenu]);
 
   const toggleReplies = (commentId, totalReplies) => {
     setExpandedReplies((prev) => {
@@ -71,7 +111,7 @@ const ChatMessage = ({
         newSet.delete(commentId);
       } else {
         newSet.add(commentId);
-        setVisibleReplies((v) => ({ ...v, [commentId]: 10 })); // start with 10
+        setVisibleReplies((v) => ({ ...v, [commentId]: 10 }));
       }
       return newSet;
     });
@@ -94,7 +134,6 @@ const ChatMessage = ({
         depth,
       });
       if (reply.replies && reply.replies.length > 0) {
-        // Nested replies should ALSO start capped at 10 (or whatever rule you want)
         result.push(...flattenReplies(reply.replies, depth + 1, visibleCount));
       }
     }
@@ -114,9 +153,7 @@ const ChatMessage = ({
   const isCurrentUser = message.userId === user.id;
 
   const handleEditClick = (comment) => {
-    // FIXED: Prevent editing in read-only mode
     if (isReadOnly) return;
-
     setEditingComment(comment.id);
     setEditContent(comment.content);
     setShowOptionsMenu(null);
@@ -131,7 +168,6 @@ const ChatMessage = ({
   };
 
   const handleSaveEdit = async (commentId) => {
-    // FIXED: Prevent saving edits in read-only mode
     if (!editContent.trim() || isUpdating || isReadOnly) return;
 
     setIsUpdating(true);
@@ -148,7 +184,6 @@ const ChatMessage = ({
   };
 
   const handleDeleteClick = async (commentId) => {
-    // FIXED: Prevent deletion in read-only mode
     if (isReadOnly) return;
 
     setDeletingComment(commentId);
@@ -163,19 +198,120 @@ const ChatMessage = ({
   };
 
   const handleReportClick = (commentId) => {
+    console.log("=== REPORT CLICK DEBUG ===");
+    console.log("Comment ID:", commentId);
+    console.log("Is Authenticated:", isAuthenticated);
     setShowReportModal(commentId);
   };
 
   const handleReportSubmit = async (commentId) => {
+    console.log("=== handleReportSubmit START ===");
+    console.log("Comment ID:", commentId);
+    console.log("Current reports state:", commentReports[commentId]);
+
+    // Prevent double submission
+    if (isReportingComment) {
+      console.log("Already reporting, preventing duplicate submission");
+      return;
+    }
+
+    setIsReportingComment(true);
+
     try {
-      if (onReportComment) {
-        await onReportComment(commentId);
+      // Check local state first
+      const currentReportStatus = commentReports[commentId];
+      if (currentReportStatus) {
+        if (currentReportStatus.isOwnComment) {
+          toast.error("You cannot report your own comment");
+          setShowReportModal(null);
+          setIsReportingComment(false);
+          return;
+        }
+        if (currentReportStatus.hasReported) {
+          toast.error("You have already reported this comment");
+          setShowReportModal(null);
+          setIsReportingComment(false);
+          return;
+        }
       }
-      toast.error("Comment reported successfully");
-      setShowReportModal(null);
+
+      // Double-check with API
+      console.log("Checking report status from API...");
+      const checkResult = await checkUserCommentReport(commentId);
+      console.log("Check result:", checkResult);
+
+      if (checkResult.success) {
+        const isOwn = checkResult.data.isOwnComment || false;
+        const hasReported = checkResult.data.hasReported || false;
+
+        // Update local state
+        setCommentReports(prev => ({
+          ...prev,
+          [commentId]: {
+            hasReported,
+            isOwnComment: isOwn
+          }
+        }));
+
+        if (isOwn) {
+          toast.error("You cannot report your own comment");
+          setShowReportModal(null);
+          setIsReportingComment(false);
+          return;
+        }
+
+        if (hasReported) {
+          toast.error("You have already reported this comment");
+          setShowReportModal(null);
+          setIsReportingComment(false);
+          return;
+        }
+      }
+
+      // Proceed with actual report submission
+      console.log("Calling reportComment API...");
+      const response = await reportComment(commentId);
+      console.log("Report response:", response);
+
+      if (response.success) {
+        // Update the specific comment's report status
+        setCommentReports(prev => ({
+          ...prev,
+          [commentId]: {
+            ...prev[commentId],
+            hasReported: true
+          }
+        }));
+        toast.success("Comment reported successfully");
+      } else {
+        if (response.error === "You cannot report your own comment") {
+          setCommentReports(prev => ({
+            ...prev,
+            [commentId]: {
+              ...prev[commentId],
+              isOwnComment: true
+            }
+          }));
+          toast.error("You cannot report your own comment");
+        } else if (response.error === "You have already reported this comment") {
+          setCommentReports(prev => ({
+            ...prev,
+            [commentId]: {
+              ...prev[commentId],
+              hasReported: true
+            }
+          }));
+          toast.error("You have already reported this comment");
+        } else {
+          toast.error(response.error || "Failed to report comment");
+        }
+      }
     } catch (error) {
-      console.error("Failed to report comment:", error);
+      console.error("Report submission failed:", error);
       toast.error("Failed to report comment");
+    } finally {
+      setIsReportingComment(false);
+      setShowReportModal(null);
     }
   };
 
@@ -196,7 +332,6 @@ const ChatMessage = ({
     return total;
   }
 
-  // FIXED: Separate options menu for owners vs report button for non-owners
   const OwnerOptionsMenu = ({ commentId, onClose }) => (
     <div className="options-menu-container absolute top-0 -right-2 mt-6 bg-white border border-gray-200 rounded-lg shadow-lg z-10 min-w-[120px]">
       <button
@@ -206,7 +341,7 @@ const ChatMessage = ({
             content: findCommentContentById(commentId),
           })
         }
-        disabled={isReadOnly} // FIXED: Disable edit in read-only mode
+        disabled={isReadOnly}
         className={`w-full px-4 py-2 text-left text-sm flex items-center space-x-2 ${isReadOnly
           ? "text-gray-600 cursor-not-allowed"
           : "text-gray-700 hover:bg-gray-50"
@@ -217,7 +352,7 @@ const ChatMessage = ({
       </button>
       <button
         onClick={() => handleDeleteClick(commentId)}
-        disabled={deletingComment === commentId || isReadOnly} // FIXED: Disable delete in read-only mode
+        disabled={deletingComment === commentId || isReadOnly}
         className={`w-full px-4 py-2 text-left text-sm flex items-center space-x-2 ${deletingComment === commentId || isReadOnly
           ? "text-gray-600 cursor-not-allowed"
           : "text-red-600 hover:bg-red-50"
@@ -230,34 +365,6 @@ const ChatMessage = ({
         )}
         <span>Delete</span>
       </button>
-    </div>
-  );
-
-  const ReportModal = ({ commentId, onClose }) => (
-    <div className="report-modal-container fixed inset-0 bg-[#0000007c] bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl w-full max-w-[280px] sm:w-[250px] p-4 relative border border-gray-400">
-        <button
-          onClick={onClose}
-          className="absolute cursor-pointer top-2 right-4 text-gray-400 hover:text-gray-600 transition-colors touch-manipulation"
-        >
-          <X size={24} />
-        </button>
-
-        <div className="text-center">
-          <p className="text-gray-600 text-xs my-3">
-            Report this comment for containing abuse, harassment, or spam.
-          </p>
-
-          <div className="space-y-3">
-            <button
-              onClick={() => handleReportSubmit(commentId)}
-              className="w-full bg-black text-white py-3 px-3 rounded-3xl hover:bg-gray-600 transition-colors font-medium touch-manipulation"
-            >
-              Report
-            </button>
-          </div>
-        </div>
-      </div>
     </div>
   );
 
@@ -291,7 +398,7 @@ const ChatMessage = ({
         rows={2}
         maxLength={250}
         placeholder="Edit your comment..."
-        disabled={isReadOnly} // FIXED: Disable textarea in read-only mode
+        disabled={isReadOnly}
       />
       <div className="flex items-center justify-between w-full">
         <CharacterCounter text={editContent} />
@@ -308,7 +415,7 @@ const ChatMessage = ({
               !editContent.trim() ||
               editContent.length > 250 ||
               isUpdating ||
-              isReadOnly // FIXED: Disable save in read-only mode
+              isReadOnly
             }
             className={`px-3 py-1 text-sm rounded transition-colors ${editContent.trim() &&
               editContent.length <= 250 &&
@@ -389,9 +496,7 @@ const ChatMessage = ({
                     {!isCoupleUser() ? (
                       <button
                         onClick={() => onLike(message.id)}
-                        disabled={
-                          deletingComment === message.id
-                        }
+                        disabled={deletingComment === message.id}
                         className="hover:opacity-70 transition-opacity flex items-center space-x-1 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <Heart
@@ -415,55 +520,23 @@ const ChatMessage = ({
                       )
                     )}
 
-
-                    {/* Conditional rendering based on read-only mode */}
+                    {/* Read-only mode */}
                     {isReadOnly ? (
-                      // Read-only mode: Only show the Report button for non-current-user comments
                       !isCurrentUser && (
-                        <div className="relative">
-                          <button
-                            onClick={() => handleReportClick(message.id)}
-                            className="hover:opacity-70 transition-opacity text-gray-500 hover:text-gray-700"
-                          >
-                            <InfoIcon size={16} className="text-gray-500 mt-1" />
-                          </button>
-
-                          {showReportModal === message.id && (
-                            <>
-                              {/* Backdrop */}
-                              <div
-                                className="fixed inset-0 bg-transparent z-[9998]"
-                                onClick={() => setShowReportModal(null)}
-                              />
-
-                              {/* Modal positioned below the info icon */}
-                              <div
-                                className="absolute top-6 -right-48 bg-white rounded-2xl w-[230px] p-3 py-2 border border-gray-400 shadow-xl z-[9999]"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <div className="text-center">
-                                  <p className="text-gray-600 text-xs mb-3">
-                                    Report this comment for containing abuse, harassment, or spam.
-                                  </p>
-                                  <div className="space-y-3">
-                                    <button
-                                      onClick={() => handleReportSubmit(message.id)}
-                                      className="w-full bg-black text-white py-1 px-3 rounded-3xl hover:bg-gray-600 transition-colors font-medium touch-manipulation"
-                                      style={{
-                                        WebkitTapHighlightColor: "transparent",
-                                      }}
-                                    >
-                                      Report
-                                    </button>
-                                  </div>
-                                </div>
-                              </div>
-                            </>
-                          )}
-                        </div>
+                        <ReportButton
+                          commentId={message.id}
+                          isOwnComment={commentReports[message.id]?.isOwnComment || false}
+                          hasReported={commentReports[message.id]?.hasReported || false}
+                          isReporting={isReportingComment}
+                          showModal={showReportModal}
+                          onOpenModal={handleReportClick}
+                          onCloseModal={() => setShowReportModal(null)}
+                          onReport={handleReportSubmit}
+                          position="left"
+                        />
                       )
                     ) : (
-                      // Active mode: Show Chat button and Report button (non-current-user only)
+                      /* Active mode */
                       <>
                         {!isCoupleUser() && (
                           <button
@@ -478,59 +551,25 @@ const ChatMessage = ({
                           </button>
                         )}
 
-                        {/* Show Report button for non-current-user comments */}
                         {!isCurrentUser && (
-                          <div className="relative">
-                            <button
-                              onClick={() => handleReportClick(message.id)}
-                              className="hover:opacity-70 transition-opacity text-gray-500 hover:text-gray-700"
-                            >
-                              <InfoIcon size={16} className="text-gray-500 mt-1" />
-                            </button>
-
-                            {showReportModal === message.id && (
-                              <>
-                                {/* Backdrop */}
-                                <div
-                                  className="fixed inset-0 bg-transparent z-[9998]"
-                                  onClick={() => setShowReportModal(null)}
-                                />
-
-                                {/* Modal positioned below the info icon */}
-                                <div
-                                  className="absolute top-6 -right-48 bg-white rounded-2xl w-[230px] p-3 py-2 border border-gray-400 shadow-xl z-[9999]"
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  <div className="text-center">
-                                    <p className="text-gray-600 text-xs mb-3">
-                                      Report this comment for containing abuse, harassment, or spam.
-                                    </p>
-                                    <div className="space-y-3">
-                                      <button
-                                        onClick={() => handleReportSubmit(message.id)}
-                                        className="w-full bg-black text-white py-1 px-3 rounded-3xl hover:bg-gray-600 transition-colors font-medium touch-manipulation"
-                                        style={{
-                                          WebkitTapHighlightColor: "transparent",
-                                        }}
-                                      >
-                                        Report
-                                      </button>
-                                    </div>
-                                  </div>
-                                </div>
-                              </>
-                            )}
-                          </div>
+                          <ReportButton
+                            commentId={message.id}
+                            isOwnComment={commentReports[message.id]?.isOwnComment || false}
+                            hasReported={commentReports[message.id]?.hasReported || false}
+                            isReporting={isReportingComment}
+                            showModal={showReportModal}
+                            onOpenModal={handleReportClick}
+                            onCloseModal={() => setShowReportModal(null)}
+                            onReport={handleReportSubmit}
+                            position="right"
+                          />
                         )}
                       </>
                     )}
                   </div>
 
-                  {/* FIXED: Separate owner options and report button */}
+                  {/* Owner options menu */}
                   <div className="flex items-center space-x-2">
-                    {/* Report button for non-owners (always visible for authenticated users) */}
-
-                    {/* Options menu only for owners */}
                     {isCurrentUser && !isReadOnly && (
                       <div className="options-menu-container relative">
                         <button
@@ -557,6 +596,7 @@ const ChatMessage = ({
               )}
             </div>
 
+            {/* REPLIES SECTION */}
             {message.replies && message.replies.length > 0 && (
               <div className="mt-3 ml-4">
                 <button
@@ -564,9 +604,7 @@ const ChatMessage = ({
                   disabled={deletingComment === message.id}
                   className="flex items-center space-x-2 text-sm text-gray-400 hover:text-gray-700 mb-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  { }
                   <span>
-                    { }
                     {expandedReplies.has(message.id)
                       ? `Hide ${replyCount === 1 ? "reply" : "replies"}`
                       : replyCount === 1
@@ -582,7 +620,7 @@ const ChatMessage = ({
                     {flattenReplies(
                       message.replies,
                       1,
-                      visibleReplies[message.id] || 10 // use dynamic visible count here
+                      visibleReplies[message.id] || 10
                     ).map((reply, index) => {
                       if (reply.isMoreReplies) {
                         return (
@@ -656,9 +694,7 @@ const ChatMessage = ({
                                     onClick={() =>
                                       onLike(reply.id, true, message.id)
                                     }
-                                    disabled={
-                                      deletingComment === reply.id
-                                    }
+                                    disabled={deletingComment === reply.id}
                                     className="hover:opacity-70 transition-opacity flex items-center space-x-1 disabled:opacity-50 disabled:cursor-not-allowed"
                                   >
                                     <Heart
@@ -686,54 +722,24 @@ const ChatMessage = ({
                                   )
                                 )}
 
-                                {/* Check if the chatroom is read-only */}
+                                {/* Reply read-only mode */}
                                 {isReadOnly ? (
-                                  // Read-only: Show Report button in place of Chat button (if not the owner)
                                   !isReplyOwner && (
-                                    <div className="relative">
-                                      <button
-                                        onClick={() => handleReportClick(reply.id)}
-                                        className="hover:opacity-70 transition-opacity text-gray-500 hover:text-gray-700 mt-2"
-                                      >
-                                        <InfoIcon size={16} />
-                                      </button>
-
-                                      {showReportModal === reply.id && (
-                                        <>
-                                          {/* Backdrop */}
-                                          <div
-                                            className="fixed inset-0 bg-transparent z-[9998]"
-                                            onClick={() => setShowReportModal(null)}
-                                          />
-
-                                          {/* Modal positioned below the info icon */}
-                                          <div
-                                            className="absolute top-6 -right-44 bg-white rounded-2xl w-[230px] p-3 py-2 border border-gray-400 shadow-xl z-[9999]"
-                                            onClick={(e) => e.stopPropagation()}
-                                          >
-                                            <div className="text-center">
-                                              <p className="text-gray-600 text-xs mb-3">
-                                                Report this comment for containing abuse, harassment, or spam.
-                                              </p>
-                                              <div className="space-y-3">
-                                                <button
-                                                  onClick={() => handleReportSubmit(reply.id)}
-                                                  className="w-full bg-black text-white py-1 px-3 rounded-3xl hover:bg-gray-600 transition-colors font-medium touch-manipulation"
-                                                  style={{ WebkitTapHighlightColor: "transparent" }}
-                                                >
-                                                  Report
-                                                </button>
-                                              </div>
-                                            </div>
-                                          </div>
-                                        </>
-                                      )}
-                                    </div>
+                                    <ReportButton
+                                      commentId={reply.id}
+                                      isOwnComment={commentReports[reply.id]?.isOwnComment || false}
+                                      hasReported={commentReports[reply.id]?.hasReported || false}
+                                      isReporting={isReportingComment}
+                                      showModal={showReportModal}
+                                      onOpenModal={handleReportClick}
+                                      onCloseModal={() => setShowReportModal(null)}
+                                      onReport={handleReportSubmit}
+                                      position="right"
+                                    />
                                   )
                                 ) : (
-                                  // Active mode: Show Chat button and conditionally show Report button
+                                  /* Reply active mode */
                                   <>
-                                    {/* Chat button */}
                                     {!isCoupleUser() && (
                                       <button
                                         onClick={() => onReply(reply)}
@@ -744,57 +750,26 @@ const ChatMessage = ({
                                       </button>
                                     )}
 
-                                    {/* Report button only if not the reply owner */}
                                     {!isReplyOwner && (
-                                      <div className="relative">
-                                        <button
-                                          onClick={() => handleReportClick(reply.id)}
-                                          className="hover:opacity-70 transition-opacity text-gray-500 hover:text-gray-700 mt-2"
-                                        >
-                                          <InfoIcon size={16} />
-                                        </button>
-
-                                        {showReportModal === reply.id && (
-                                          <>
-                                            {/* Backdrop */}
-                                            <div
-                                              className="fixed inset-0 bg-transparent z-[9998]"
-                                              onClick={() => setShowReportModal(null)}
-                                            />
-
-                                            {/* Modal positioned below the info icon */}
-                                            <div
-                                              className="absolute top-6 -right-44 bg-white rounded-2xl w-[230px] p-3 py-2 border border-gray-400 shadow-xl z-[9999]"
-                                              onClick={(e) => e.stopPropagation()}
-                                            >
-                                              <div className="text-center">
-                                                <p className="text-gray-600 text-xs mb-3">
-                                                  Report this comment for containing abuse, harassment, or spam.
-                                                </p>
-                                                <div className="space-y-3">
-                                                  <button
-                                                    onClick={() => handleReportSubmit(reply.id)}
-                                                    className="w-full bg-black text-white py-1 px-3 rounded-3xl hover:bg-gray-600 transition-colors font-medium touch-manipulation"
-                                                    style={{
-                                                      WebkitTapHighlightColor: "transparent",
-                                                    }}
-                                                  >
-                                                    Report
-                                                  </button>
-                                                </div>
-                                              </div>
-                                            </div>
-                                          </>
-                                        )}
-                                      </div>
+                                      <ReportButton
+                                        commentId={reply.id}
+                                        isOwnComment={commentReports[reply.id]?.isOwnComment || false}
+                                        hasReported={commentReports[reply.id]?.hasReported || false}
+                                        isReporting={isReportingComment}
+                                        showModal={showReportModal}
+                                        onOpenModal={handleReportClick}
+                                        onCloseModal={() => setShowReportModal(null)}
+                                        onReport={handleReportSubmit}
+                                        position="right"
+                                      />
                                     )}
                                   </>
                                 )}
                               </div>
 
-                              {/* FIXED: Separate owner options and report for replies */}
+                              {/* Reply owner options */}
                               <div className="flex items-center space-x-2">
-                                {isReplyOwner && (
+                                {isReplyOwner && !isReadOnly && (
                                   <div className="options-menu-container relative">
                                     <button
                                       onClick={() =>
@@ -830,13 +805,6 @@ const ChatMessage = ({
           </div>
         </div>
       </div>
-
-      {/* {showReportModal && (
-        <ReportModal
-          commentId={showReportModal}
-          onClose={() => setShowReportModal(null)}
-        />
-      )} */}
     </>
   );
 };

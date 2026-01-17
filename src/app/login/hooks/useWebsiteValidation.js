@@ -9,6 +9,8 @@ const PERSONAL_EMAIL_PROVIDERS = [
   'guerrillamail.com', '10minutemail.com', 'tempmail.org', 'mailinator.com',
 ];
 
+
+
 /**
  * Website validation hook with domain matching
  * @param {string} userEmail - User's email for domain matching
@@ -22,6 +24,7 @@ export const useWebsiteValidation = (userEmail = '', debounceMs = 800) => {
   });
   const [showError, setShowError] = useState(false);
   const typingTimer = useRef(null);
+  const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
   const validateWebsite = (url, showMessage = true) => {
     if (!url) {
@@ -29,7 +32,21 @@ export const useWebsiteValidation = (userEmail = '', debounceMs = 800) => {
       return;
     }
 
-    let formattedUrl = url.trim();
+    const trimmed = url.trim();
+
+    // HARD BLOCK: email entered instead of website
+    if (EMAIL_REGEX.test(trimmed)) {
+      setWebsiteValidation({
+        isValid: false,
+        message: showMessage
+          ? 'Please enter a website URL, not an email address'
+          : '',
+        type: 'error',
+      });
+      return;
+    }
+
+    let formattedUrl = trimmed;
     if (!formattedUrl.startsWith('http://') && !formattedUrl.startsWith('https://')) {
       formattedUrl = 'https://' + formattedUrl;
     }
@@ -45,7 +62,9 @@ export const useWebsiteValidation = (userEmail = '', debounceMs = 800) => {
       if (!userEmail) {
         setWebsiteValidation({
           isValid: false,
-          message: showMessage ? 'Email not found. Please complete email step first.' : '',
+          message: showMessage
+            ? 'Please complete email verification first'
+            : '',
           type: 'error',
         });
         return;
@@ -63,7 +82,7 @@ export const useWebsiteValidation = (userEmail = '', debounceMs = 800) => {
         return;
       }
 
-      // If email is from a personal provider, allow any valid website
+      // Personal email → any valid website allowed
       if (PERSONAL_EMAIL_PROVIDERS.includes(emailDomain)) {
         setWebsiteValidation({
           isValid: true,
@@ -73,7 +92,7 @@ export const useWebsiteValidation = (userEmail = '', debounceMs = 800) => {
         return;
       }
 
-      // For business emails, domain must match
+      // Business email → domain must match
       if (websiteDomain === emailDomain) {
         setWebsiteValidation({
           isValid: true,
@@ -84,12 +103,12 @@ export const useWebsiteValidation = (userEmail = '', debounceMs = 800) => {
         setWebsiteValidation({
           isValid: false,
           message: showMessage
-            ? `Website domain (${websiteDomain}) must match your email domain (${emailDomain})`
+            ? `Website domain must match your email domain`
             : '',
           type: 'error',
         });
       }
-    } catch (error) {
+    } catch {
       setWebsiteValidation({
         isValid: false,
         message: showMessage ? 'Please enter a valid website URL' : '',
@@ -97,6 +116,7 @@ export const useWebsiteValidation = (userEmail = '', debounceMs = 800) => {
       });
     }
   };
+
 
   const handleWebsiteChange = (url) => {
     setShowError(false);

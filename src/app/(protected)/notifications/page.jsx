@@ -106,15 +106,15 @@ const NotificationsPage = () => {
 
   const handleNotificationClick = async (notification) => {
     try {
-      if (!notification.isRead) {
-        await markNotificationAsRead(notification.id);
-        setNotifications((prev) =>
-          prev.map((notif) =>
-            notif.id === notification.id ? { ...notif, isRead: true } : notif
-          )
-        );
-        setUnreadCount((prev) => Math.max(0, prev - 1));
-      }
+      // if (!notification.isRead) {
+      //   await markNotificationAsRead(notification.id);
+      //   setNotifications((prev) =>
+      //     prev.map((notif) =>
+      //       notif.id === notification.id ? { ...notif, isRead: true } : notif
+      //     )
+      //   );
+      //   setUnreadCount((prev) => Math.max(0, prev - 1));
+      // }
 
       // Navigate based on notification type and post ID
       if (notification.postId) {
@@ -267,16 +267,14 @@ const NotificationsPage = () => {
               <div
                 key={notification.id}
                 onClick={() => handleNotificationClick(notification)}
-                className={`py-4 px-4 -mx-4 cursor-pointer transition-colors duration-200 hover:bg-gray-50 border-b border-gray-100 ${
-                  !notification.isRead ? "" : ""
-                }`}
+                className={`py-4 px-4 -mx-4 cursor-pointer transition-colors duration-200 hover:bg-gray-50 border-b border-gray-100 ${!notification.isRead ? "" : ""
+                  }`}
               >
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <p
-                      className={`text-base text-black ${
-                        !notification.isRead ? "font-semibold" : ""
-                      }`}
+                      className={`text-base text-black ${!notification.isRead ? "font-semibold" : ""
+                        }`}
                     >
                       <span className="font-semibold">
                         {getActorName(notification)}
@@ -288,6 +286,12 @@ const NotificationsPage = () => {
                         "{notification.metadata.commentPreview}"
                       </p>
                     )}
+                    {notification.metadata?.replyPreview && (
+                      <p className="text-sm text-gray-700 mt-1 font-medium">
+                        {notification.metadata.replyPreview}
+                      </p>
+                    )}
+
                     <p className="text-sm text-gray-500 mt-1">
                       {formatTimestamp(notification.createdAt)}
                     </p>

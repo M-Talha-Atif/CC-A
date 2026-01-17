@@ -77,23 +77,27 @@ export const formatTimestamp = (dateString) => {
 };
 
 export const LinkifyText = ({ text, onContentClick }) => {
-  const urlRegex = /(https?:\/\/[^\s]+)/g;
+ const urlRegex = /(https?:\/\/[^\s]+|(?:www\.)?[a-zA-Z0-9-]+\.[a-zA-Z]{2,}(?:\/[^\s]*)?)/g;
+
 
   const renderTextWithLinks = (text) => {
     const parts = text.split(urlRegex);
 
     return parts.map((part, index) => {
       if (part.match(urlRegex)) {
+        // Ensure URL has protocol
+        const href = part.startsWith("http://") || part.startsWith("https://")
+          ? part
+          : `https://${part}`; // default to https
+
         return (
           <a
             key={index}
-            href={part}
+            href={href}
             target="_blank"
             rel="noopener noreferrer"
             className="text-blue-600 hover:text-blue-800 underline break-all"
-            onClick={(e) => {
-              e.stopPropagation(); // Prevent triggering the content click
-            }}
+            onClick={(e) => e.stopPropagation()}
           >
             {part}
           </a>
@@ -102,6 +106,7 @@ export const LinkifyText = ({ text, onContentClick }) => {
       return part;
     });
   };
+
 
   return (
     <div
@@ -541,7 +546,8 @@ const Post = ({
       return;
     }
 
-    router.push(`/feed/create-post?quote=${post.id}`);
+    const currentPath = window.location.pathname;
+    router.push(`/feed/create-post?quote=${post.id}&source=${encodeURIComponent(currentPath)}`);
   };
 
   const handleOptionsClick = (e) => {
@@ -605,31 +611,7 @@ const Post = ({
     setThresholdModalType("");
   };
 
-  const handleJoinChatroom = () => {
-    // First check: Prevent unauthenticated users from accessing chatrooms
-    if (!isAuthenticated) {
-      return;
-    }
 
-    // Only prevent chatroom access when current category is Couples
-    if (shouldHideReplies) {
-      return;
-    }
-
-    // CRITICAL FIX: Check if post meets threshold for chatroom access
-    if (!post.thresholdMet) {
-      // Post doesn't meet threshold, show error message instead of modal
-      toast.error(
-        "Chatroom access is unavailable as this post hasn't reached the threshold"
-      );
-      return;
-    }
-
-    // Post meets threshold, proceed with chatroom
-    if (handleChatroomClick) {
-      handleChatroomClick(post);
-    }
-  };
 
   const formatThresholdMetTimeAgo = () => {
     if (!post.thresholdMetAt) return null;

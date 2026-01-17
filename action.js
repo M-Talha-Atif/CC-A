@@ -319,8 +319,8 @@ export const checkEmailExists = async (email) => {
 
     return {
       success: true,
-      exists: data.data.exists,   
-       reason: data.data.reason,
+      exists: data.data.exists,
+      reason: data.data.reason,
     };
   } catch (error) {
     return {
@@ -1751,6 +1751,61 @@ export const checkUserReport = async (postId) => {
     };
   } catch (error) {
     console.error("Check report error:", error);
+    return {
+      success: false,
+      error: error.response?.data?.error || "Failed to check report status",
+    };
+  }
+};
+
+
+// Report a comment
+export const reportComment = async (commentId) => {
+  try {
+    const response = await makeAuthenticatedRequest(
+      `${process.env.NEXT_PUBLIC_BASE_URL}api/post/comment/${commentId}/report`,
+      {
+        method: "POST",
+        data: {},
+      }
+    );
+
+    return {
+      success: true,
+      data: response.data,
+      message: "Comment reported successfully",
+    };
+  } catch (error) {
+    console.error("Report comment error:", error);
+    return {
+      success: false,
+      error: error.response?.data?.error || "Failed to report comment",
+    };
+  }
+};
+
+// Check if user has already reported a comment
+export const checkUserCommentReport = async (commentId) => {
+  try {
+    console.log("=== Frontend: checkUserCommentReport ===");
+    console.log("Comment ID:", commentId);
+    console.log("URL:", `${process.env.NEXT_PUBLIC_BASE_URL}api/post/comment/${commentId}/report/check`);
+    const response = await makeAuthenticatedRequest(
+      `${process.env.NEXT_PUBLIC_BASE_URL}api/post/comment/${commentId}/report/check`,
+      {
+        method: "GET",
+      }
+    );
+
+    return {
+      success: true,
+      data: response.data,
+    };
+  } catch (error) {
+    console.error("Check comment report error:", error);
+    console.error("Error response:", error.response?.data);
+    console.error("Error status:", error.response?.status);
+
     return {
       success: false,
       error: error.response?.data?.error || "Failed to check report status",

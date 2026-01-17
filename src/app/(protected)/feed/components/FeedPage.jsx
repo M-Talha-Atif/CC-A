@@ -1466,7 +1466,8 @@ const FeedPage = ({ params = {}, singlePostMode = false, postId = null }) => {
     }
 
     // User is eligible, proceed to create post
-    router.push("/feed/create-post");
+    const currentPath = `/feed/${urlMappings[selectedCategory] || 'popular'}`;
+    router.push(`/feed/create-post?source=${encodeURIComponent(currentPath)}`);
   }, [isAuthenticated, router]);
 
   // Add this before the return statement, after all your other logic

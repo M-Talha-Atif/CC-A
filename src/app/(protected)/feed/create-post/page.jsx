@@ -7,7 +7,7 @@ import {
   ArrowLeft,
   Vote,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createPost, getPost } from "../../../../../action";
 import { toast, Toaster } from "sonner";
 import { LinkifyText } from "../components/Post";
@@ -17,6 +17,7 @@ import SendIcon from "../../../../components/icons/SendIcon";
 
 const CreatePage = () => {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [quotedPost, setQuotedPost] = useState(null);
   const [isQuotePost, setIsQuotePost] = useState(false);
   const [loadingQuotedPost, setLoadingQuotedPost] = useState(false);
@@ -30,6 +31,10 @@ const CreatePage = () => {
   const [loading, setLoading] = useState(false);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const [isExiting, setIsExiting] = useState(false);
+  const [sourcePage, setSourcePage] = useState('/feed/popular');
+
+
+
 
   // iOS-safe refs
   const textareaRef = useRef(null);
@@ -41,7 +46,28 @@ const CreatePage = () => {
   const isIOSRef = useRef(false);
   const hasUnsavedContentRef = useRef(false);
 
-  const { isAuthenticated, hasHydrated } = useUserStore();
+  const { isAuthenticated, hasHydrated, currentFeedCategory } = useUserStore();
+
+  // Capture source page on mount
+  useEffect(() => {
+    const source = searchParams.get('source');
+
+    if (source) {
+      setSourcePage(decodeURIComponent(source));
+    } else {
+      // Fallback: try to detect from referrer or current feed category
+      const referrer = document.referrer;
+
+      if (referrer && referrer.includes('/feed/')) {
+        const match = referrer.match(/\/feed\/([^/?#]+)/);
+        if (match && match[1]) {
+          setSourcePage(`/feed/${match[1]}`);
+        }
+      } else if (currentFeedCategory) {
+        setSourcePage(`/feed/${currentFeedCategory}`);
+      }
+    }
+  }, [searchParams, currentFeedCategory]);
 
   // Add these utility functions at the top of your component, before the component definition
   const DRAFT_KEY = 'create-post-draft';
@@ -461,7 +487,7 @@ const CreatePage = () => {
     clearDraft(); // clear draft
     // Wait for animation to complete before navigating
     setTimeout(() => {
-      router.push("/feed/new");
+      router.push(sourcePage); // source page instead of hardcoded /feed/new
     }, 300);
   };
 
@@ -962,9 +988,9 @@ const CreatePage = () => {
                       whiteSpace: "pre-wrap",
                     }}
                     rows={1}
-                    autoComplete="off"
-                    autoCorrect="off"
-                    spellCheck="false"
+                    autoComplete="on"
+                    autoCorrect="on"
+                    spellCheck="true"
                     autoCapitalize="sentences"
                   />
                 </div>
@@ -972,45 +998,60 @@ const CreatePage = () => {
               <div className="mb-4 w-full h-px bg-gray-300 mx-auto"></div>
 
               {/* Content */}
-              <div className="">
+              <div className="relative w-full">
+                {/* Highlighted mirror */}
+                <div
+                  className="absolute top-0 left-0 w-full h-full px-4 py-3 rounded-lg pointer-events-none whitespace-pre-wrap break-words text-gray-900"
+                  style={{ lineHeight: "1.5" }}
+                  dangerouslySetInnerHTML={{
+                    __html: content
+                      .replace(/&/g, "&amp;")
+                      .replace(/</g, "&lt;")
+                      .replace(/>/g, "&gt;")
+                      .replace(
+                        /(https?:\/\/[^\s]+|(?:www\.)?[a-zA-Z0-9-]+\.[a-zA-Z]{2,}(?:\/[^\s]*)?)/g,
+                        '<span style="color:blue; text-decoration:underline;">$1</span>'
+                      ),
+                  }}
+                ></div>
+
+                {/* Actual textarea */}
                 <textarea
                   ref={textareaRef}
                   value={content}
                   onChange={handleContentChange}
                   placeholder="Share your thoughts, tips, or experiences..."
-                  className="w-full px-4 py-3 rounded-lg focus:ring-0 focus:outline-none resize-none"
+                  className="w-full px-4 py-3 rounded-lg focus:ring-0 focus:outline-none resize-none bg-transparent relative"
                   style={{
                     minHeight: type === "poll" ? "60px" : "100px",
                     maxHeight: type === "poll" ? "200px" : "500px",
                     lineHeight: "1.5",
-                    WebkitAppearance: "none",
-                    WebkitUserSelect: "text",
-                    WebkitTouchCallout: "none",
-                    WebkitOverflowScrolling: "touch",
-                    touchAction: "pan-y",
-                    overflowY: "auto",
+                    background: "transparent",
+                    position: "relative",
+                    zIndex: 1,
+                    color: "transparent",
+                    caretColor: "black", // cursor stays visible
                     wordWrap: "break-word",
                     whiteSpace: "pre-wrap",
-                    WebkitTransform: "translateZ(0)", // Hardware acceleration
-                    transform: "translateZ(0)",
+                    overflowY: "auto",
                   }}
                   maxLength={500}
                   rows={type === "poll" ? 2 : 4}
-                  autoComplete="off"
-                  autoCorrect="off"
-                  spellCheck="false"
+                  autoComplete="on"
+                  autoCorrect="on"
+                  spellCheck="true"
                   autoCapitalize="sentences"
                   onInput={(e) => {
-                    // iOS immediate height adjustment
                     const target = e.target;
                     const maxHeight = type === "poll" ? 200 : 500;
-                    target.style.height = 'auto';
+                    target.style.height = "auto";
                     const newHeight = Math.min(target.scrollHeight, maxHeight);
-                    target.style.height = newHeight + 'px';
-                    target.style.overflowY = newHeight >= maxHeight ? 'auto' : 'hidden';
+                    target.style.height = newHeight + "px";
+                    target.style.overflowY = newHeight >= maxHeight ? "auto" : "hidden";
                   }}
                 />
               </div>
+
               {type === "poll" && (
                 <div className="mb-6 mt-2">
                   <div className="space-y-3 flex flex-col items-start ml-2 w-full relative">
@@ -1054,7 +1095,7 @@ const CreatePage = () => {
                               className="w-full px-2 py-2 mt-2 text-left bg-transparent focus:outline-none resize-none overflow-hidden"
                               rows={2}
                               maxLength={52}
-                              spellCheck="false"
+                              spellCheck="true"
                               style={{
                                 height: "44px",
                                 lineHeight: "22px",

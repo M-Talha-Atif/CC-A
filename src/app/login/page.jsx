@@ -1347,7 +1347,27 @@ const page = () => {
                       </button>
 
                       <button
-                        onClick={() => setCurrentStep("email-login")}
+                        onClick={() => {
+                          // Reset auth-related form state
+                          setFormData(prev => ({
+                            ...prev,
+                            email: "",
+                            password: "",
+                            confirmPassword: "",
+                          }));
+
+                          resetValidation();
+
+                          setEmailVerificationSent(false);
+                          setVerificationStatus(null);
+                          
+
+                          // Push signup mode explicitly
+                          router.push("/login?flow=creative&step=login-choice&mode=signup");
+
+                          // Move back to auth step
+                          setCurrentStep("auth");
+                        }}
                         className="w-full py-2 text-gray-600 hover:text-gray-800 transition-colors"
                       >
                         Change Email Address
