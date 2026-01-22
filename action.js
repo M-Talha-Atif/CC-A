@@ -900,13 +900,14 @@ export const likePost = async ({ postId }) => {
       {
         method: "POST",
         data: {},
+        keepalive: true,
       }
     );
 
     if (result.success) {
       return {
         success: true,
-        data: result.data,
+        data: result,
         error: null,
       };
     }

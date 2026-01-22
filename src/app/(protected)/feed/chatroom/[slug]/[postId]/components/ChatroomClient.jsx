@@ -61,7 +61,6 @@ const formatTimeRemaining = (milliseconds) => {
   }
 };
 
-
 const ChatroomClient = () => {
   const { slug, postId } = useParams();
   const router = useRouter();

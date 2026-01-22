@@ -65,6 +65,7 @@ import PlannerIcon from "../../../../components/icons/FilterIcons/PlannerIcon";
 import SeeAllIcon from "../../../../components/icons/FilterIcons/SeeAllIcon";
 import Portal from "../../../../components/Portal";
 import { useScrollVisibility } from "@/hooks/useScrollVisibilityContext";
+import Spinner from "./Spinner"
 
 const FeedPage = ({ params = {}, singlePostMode = false, postId = null }) => {
   const router = useRouter();
@@ -813,38 +814,38 @@ const FeedPage = ({ params = {}, singlePostMode = false, postId = null }) => {
     };
   }, []);
 
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible" && mountedRef.current) {
-        // Re-establish connection after background
-        if (fetchError || allPosts.length === 0) {
-          console.log("App resumed, refreshing feed...");
-          setFetchError(null);
-          fetchPosts(1, selectedCategory, true);
-        }
-      } else if (document.visibilityState === "hidden") {
-        // Cancel ongoing requests when going to background
-        if (abortControllerRef.current) {
-          abortControllerRef.current.abort();
-        }
-      }
-    };
+  // useEffect(() => {
+  //   const handleVisibilityChange = () => {
+  //     if (document.visibilityState === "visible" && mountedRef.current) {
+  //       // Re-establish connection after background
+  //       if (fetchError || allPosts.length === 0) {
+  //         console.log("App resumed, refreshing feed...");
+  //         setFetchError(null);
+  //         fetchPosts(1, selectedCategory, true);
+  //       }
+  //     } else if (document.visibilityState === "hidden") {
+  //       // Cancel ongoing requests when going to background
+  //       if (abortControllerRef.current) {
+  //         abortControllerRef.current.abort();
+  //       }
+  //     }
+  //   };
 
-    const handlePageHide = () => {
-      // Cancel all requests when page is being hidden/unloaded
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-    };
+  // const handlePageHide = () => {
+  //   // Cancel all requests when page is being hidden/unloaded
+  //   if (abortControllerRef.current) {
+  //     abortControllerRef.current.abort();
+  //   }
+  // };
 
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-    window.addEventListener("pagehide", handlePageHide);
+  // document.addEventListener("visibilitychange", handleVisibilityChange);
+  // window.addEventListener("pagehide", handlePageHide);
 
-    return () => {
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-      window.removeEventListener("pagehide", handlePageHide);
-    };
-  }, [selectedCategory, fetchError]); // Minimal dependencies
+  //   return () => {
+  //     document.removeEventListener("visibilitychange", handleVisibilityChange);
+  //     window.removeEventListener("pagehide", handlePageHide);
+  //   };
+  // }, [selectedCategory, fetchError]); // Minimal dependencies
 
   const handleManualLoadMore = useCallback(() => {
     if (
@@ -899,7 +900,6 @@ const FeedPage = ({ params = {}, singlePostMode = false, postId = null }) => {
     },
     [router, urlMappings, singlePostMode]
   );
-
 
   // New handler for creative sub-filter changes
   const handleCreativesSubFilterChange = useCallback(
@@ -1365,15 +1365,16 @@ const FeedPage = ({ params = {}, singlePostMode = false, postId = null }) => {
 
       try {
         // First, check if post has comments
-        const commentCountResponse = await getPostCommentCount({
-          postId: post.id,
-        });
+        console.log("Posts comments: ", post.commentsCount)
+        // const commentCountResponse = await getPostCommentCount({
+        //   postId: post.id,
+        // });
 
         // If post has comments, navigate directly to chatroom (no modal)
-        if (commentCountResponse.hasComments) {
+        if (post.commentsCount > 0) {
           console.log("Post has comments, navigating directly to chatroom");
 
-          const response = await openChatroom({ postId: post.id });
+          // const response = await openChatroom({ postId: post.id });
 
           const slug = generateSlug(post.subject);
           const categoriesPath = post.categories
@@ -1438,37 +1439,49 @@ const FeedPage = ({ params = {}, singlePostMode = false, postId = null }) => {
     return `${mins}m`;
   }, []);
 
+  const [isCheckingEligibility, setIsCheckingEligibility] = useState(false);
+
   const handleCreatePost = useCallback(async () => {
     if (!isAuthenticated) {
       setShowLoginPrompt(true);
       return;
     }
 
-    // Check if user is eligible to post
-    const eligibilityResponse = await checkPostingEligibility();
+    // Start loading
+    setIsCheckingEligibility(true);
 
-    if (!eligibilityResponse.success) {
-      toast.error("Failed to check posting eligibility");
-      return;
+    try {
+      // Check if user is eligible to post
+      const eligibilityResponse = await checkPostingEligibility();
+
+      if (!eligibilityResponse.success) {
+        toast.error("Failed to check posting eligibility");
+        return;
+      }
+
+      const { canPost, likesRemaining } = eligibilityResponse.data;
+
+      if (!canPost) {
+        toast.error(
+          `Like ${likesRemaining} post${likesRemaining !== 1 ? "s" : ""} to unlock posting`,
+          {
+            duration: 3000,
+          }
+        );
+        return;
+      }
+
+      // User is eligible, proceed to create post
+      const currentPath = `/feed/${urlMappings[selectedCategory] || 'popular'}`;
+      router.push(`/feed/create-post?source=${encodeURIComponent(currentPath)}`);
+    } catch (error) {
+      console.error("Error checking eligibility:", error);
+      toast.error("Something went wrong. Please try again.");
+    } finally {
+      // Stop loading
+      setIsCheckingEligibility(false);
     }
-
-    const { canPost, likesRemaining } = eligibilityResponse.data;
-
-    if (!canPost) {
-      toast.error(
-        `Like ${likesRemaining} post${likesRemaining !== 1 ? "s" : ""
-        } to unlock posting`,
-        {
-          duration: 3000,
-        }
-      );
-      return;
-    }
-
-    // User is eligible, proceed to create post
-    const currentPath = `/feed/${urlMappings[selectedCategory] || 'popular'}`;
-    router.push(`/feed/create-post?source=${encodeURIComponent(currentPath)}`);
-  }, [isAuthenticated, router]);
+  }, [isAuthenticated, router, selectedCategory]);
 
   // Add this before the return statement, after all your other logic
   const displayCategory = useMemo(() => {
@@ -1808,6 +1821,7 @@ const FeedPage = ({ params = {}, singlePostMode = false, postId = null }) => {
       {user?.userType !== "couple" && isAuthenticated && (
         <motion.button
           onClick={handleCreatePost}
+          disabled={isCheckingEligibility}
           initial={{ y: 0, opacity: 0 }}
           animate={{
             // y: isVisible ? 0 : 0,
@@ -1822,9 +1836,15 @@ const FeedPage = ({ params = {}, singlePostMode = false, postId = null }) => {
           style={{
             pointerEvents: isVisible ? "auto" : "none",
           }}
-          className="fixed cursor-pointer bottom-6 right-6 w-14 h-14 flex items-center justify-center shadow-lg rounded-4xl"
+          className={`fixed cursor-pointer bottom-6 right-6 w-14 h-14 flex items-center justify-center shadow-lg rounded-4xl transition-all ${isCheckingEligibility ? 'opacity-60 cursor-not-allowed' : ''
+            }`}
         >
-          <PostingIcon size={56} />
+          {isCheckingEligibility ? (
+            <Spinner size={32} className="text-white" />
+          ) : (
+            <PostingIcon size={56} />
+          )}
+
         </motion.button>
       )}
 

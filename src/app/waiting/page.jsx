@@ -57,9 +57,9 @@ const Page = () => {
         const statusResponse = await checkUserStatus();
 
         if (statusResponse.data && statusResponse.data.status === "rejected") {
-          // setShowRejectedPopup(true);
+          setShowRejectedPopup(true);
           setIsChecking(false);
-          await handleRejectedUser();
+          // await handleRejectedUser();
           return;
         }
 
@@ -95,7 +95,7 @@ const Page = () => {
 
         if (statusResponse.data && statusResponse.data.status === "rejected") {
           clearInterval(statusCheckInterval);
-          await handleRejectedUser();
+          // await handleRejectedUser();
           return;
         }
 

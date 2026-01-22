@@ -1346,7 +1346,7 @@ const page = () => {
                         )}
                       </button>
 
-                      <button
+                      {/* <button
                         onClick={() => {
                           // Reset auth-related form state
                           setFormData(prev => ({
@@ -1371,7 +1371,7 @@ const page = () => {
                         className="w-full py-2 text-gray-600 hover:text-gray-800 transition-colors"
                       >
                         Change Email Address
-                      </button>
+                      </button> */}
                     </div>
                   </div>
                 )}

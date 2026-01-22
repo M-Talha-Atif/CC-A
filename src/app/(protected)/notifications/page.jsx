@@ -104,124 +104,116 @@ const NotificationsPage = () => {
     return date.toLocaleDateString();
   };
 
-  const handleNotificationClick = async (notification) => {
-    try {
-      // if (!notification.isRead) {
-      //   await markNotificationAsRead(notification.id);
-      //   setNotifications((prev) =>
-      //     prev.map((notif) =>
-      //       notif.id === notification.id ? { ...notif, isRead: true } : notif
-      //     )
-      //   );
-      //   setUnreadCount((prev) => Math.max(0, prev - 1));
-      // }
+  const handleNotificationClick = (notification) => {
+    const { id, metadata, postId, isRead } = notification;
 
-      // Navigate based on notification type and post ID
-      if (notification.postId) {
-        await handlePostRedirect(notification);
-      }
-    } catch (error) {
-      console.error("Error marking notification as read:", error);
+    if (!metadata?.categoriesPath || !metadata?.postSlug) {
+      router.push(`/feed/${postId}`);
+      return;
     }
-  };
 
-  const handlePostRedirect = async (notification) => {
-    try {
-      // Fetch the actual post data to get accurate categories and details
-      const postData = await getPost(notification.postId);
+    const base = metadata.target;
 
-      if (!postData || !postData.post) {
-        throw new Error("Post not found");
-      }
+    router.push(
+      `/${base}/${metadata.categoriesPath}/${metadata.postSlug}/${postId}`
+    );
 
-      const post = postData.post;
-
-      // Generate slug from post subject
-      const generateSlug = (text) => {
-        return text
-          .toLowerCase()
-          .replace(/[^\w\s-]/g, "")
-          .replace(/\s+/g, "-")
-          .replace(/--+/g, "-")
-          .trim();
-      };
-
-      const slug = generateSlug(post.subject);
-
-      // Generate categories path
-      const categoriesPath = post.categories
-        .map((category) =>
-          category
-            .toLowerCase()
-            .replace(/[^a-z0-9\s-]/g, "")
-            .replace(/\s+/g, "-")
-            .replace(/-+/g, "-")
-            .trim()
-        )
-        .filter((category) => category.length > 0)
-        .join("-");
-
-      // Check if post has comments using the comment count API
-      const commentCountData = await getPostCommentCount({
-        postId: notification.postId,
+    // Background API call (no await)
+    if (!isRead) {
+      markNotificationAsRead(id).catch((error) => {
+        console.error("Failed to mark notification as read:", error);
+        // Optional: Show toast notification of failure
       });
-      const hasComments = commentCountData && commentCountData.commentCount > 0;
-
-      // Navigate based on whether the post has comments
-      if (hasComments) {
-        // Post has comments - navigate to chatroom
-        const chatroomUrl = `/chatroom/${categoriesPath}/${slug}/${notification.postId}`;
-        await router.push(chatroomUrl);
-      } else {
-        // Post has no comments - navigate to feed page
-        const feedUrl = `/feed/${categoriesPath}/${notification.postId}`;
-        await router.push(feedUrl);
-      }
-    } catch (error) {
-      console.error("Error in handlePostRedirect:", error);
-
-      // Fallback: Try to use metadata if available, otherwise go to generic route
-      try {
-        const postCategories = notification.metadata?.postCategories || [];
-
-        if (postCategories.length > 0) {
-          const categoriesPath = postCategories
-            .map((category) =>
-              category
-                .toLowerCase()
-                .replace(/[^a-z0-9\s-]/g, "")
-                .replace(/\s+/g, "-")
-                .replace(/-+/g, "-")
-                .trim()
-            )
-            .filter((category) => category.length > 0)
-            .join("-");
-
-          const feedUrl = `/feed/${categoriesPath}/${notification.postId}`;
-          await router.push(feedUrl);
-        } else {
-          // Last resort: redirect to home/feed
-          await router.push("/feed");
-        }
-      } catch (navError) {
-        console.error("Navigation fallback failed:", navError);
-        // Force redirect to feed as absolute last resort
-        window.location.href = "/feed";
-      }
     }
   };
 
-  const handleMarkAllAsRead = async () => {
-    try {
-      await markAllNotificationsAsRead();
-      setNotifications((prev) =>
-        prev.map((notif) => ({ ...notif, isRead: true }))
-      );
-      setUnreadCount(0);
-    } catch (error) {
-      console.error("Error marking all as read:", error);
-    }
-  };
+
+  // const handlePostRedirect = async (notification) => {
+  //   try {
+  //     // Fetch the actual post data to get accurate categories and details
+  //     const postData = await getPost(notification.postId);
+
+  //     if (!postData || !postData.post) {
+  //       throw new Error("Post not found");
+  //     }
+
+  //     const post = postData.post;
+
+  //     // Generate slug from post subject
+  //     const generateSlug = (text) => {
+  //       return text
+  //         .toLowerCase()
+  //         .replace(/[^\w\s-]/g, "")
+  //         .replace(/\s+/g, "-")
+  //         .replace(/--+/g, "-")
+  //         .trim();
+  //     };
+
+  //     const slug = generateSlug(post.subject);
+
+  //     // Generate categories path
+  //     const categoriesPath = post.categories
+  //       .map((category) =>
+  //         category
+  //           .toLowerCase()
+  //           .replace(/[^a-z0-9\s-]/g, "")
+  //           .replace(/\s+/g, "-")
+  //           .replace(/-+/g, "-")
+  //           .trim()
+  //       )
+  //       .filter((category) => category.length > 0)
+  //       .join("-");
+
+  //     // Check if post has comments using the comment count API
+  //     const commentCountData = await getPostCommentCount({
+  //       postId: notification.postId,
+  //     });
+  //     const hasComments = commentCountData && commentCountData.commentCount > 0;
+
+  //     // Navigate based on whether the post has comments
+  //     if (hasComments) {
+  //       // Post has comments - navigate to chatroom
+  //       const chatroomUrl = `/chatroom/${categoriesPath}/${slug}/${notification.postId}`;
+  //       await router.push(chatroomUrl);
+  //     } else {
+  //       // Post has no comments - navigate to feed page
+  //       const feedUrl = `/feed/${categoriesPath}/${notification.postId}`;
+  //       await router.push(feedUrl);
+  //     }
+  //   } catch (error) {
+  //     console.error("Error in handlePostRedirect:", error);
+
+  //     // Fallback: Try to use metadata if available, otherwise go to generic route
+  //     try {
+  //       const postCategories = notification.metadata?.postCategories || [];
+
+  //       if (postCategories.length > 0) {
+  //         const categoriesPath = postCategories
+  //           .map((category) =>
+  //             category
+  //               .toLowerCase()
+  //               .replace(/[^a-z0-9\s-]/g, "")
+  //               .replace(/\s+/g, "-")
+  //               .replace(/-+/g, "-")
+  //               .trim()
+  //           )
+  //           .filter((category) => category.length > 0)
+  //           .join("-");
+
+  //         const feedUrl = `/feed/${categoriesPath}/${notification.postId}`;
+  //         await router.push(feedUrl);
+  //       } else {
+  //         // Last resort: redirect to home/feed
+  //         await router.push("/feed");
+  //       }
+  //     } catch (navError) {
+  //       console.error("Navigation fallback failed:", navError);
+  //       // Force redirect to feed as absolute last resort
+  //       window.location.href = "/feed";
+  //     }
+  //   }
+  // };
+
 
   const getActorName = (notification) => {
     // For comment-related notifications, use chatroom username if available
@@ -242,16 +234,6 @@ const NotificationsPage = () => {
       style={{ fontFamily: "Nunito Sans, sans-serif" }}
     >
       <div className="max-w-2xl mx-auto px-6 pb-4">
-        <div className="flex items-center justify-between mb-6">
-          {/* {unreadCount > 0 && (
-            <button
-              onClick={handleMarkAllAsRead}
-              className="text-sm text-blue-600 hover:text-blue-800"
-            >
-              Mark all as read
-            </button>
-          )} */}
-        </div>
 
         {isLoading ? (
           <div className="flex justify-center items-center py-12">

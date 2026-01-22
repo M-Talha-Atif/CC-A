@@ -10,11 +10,6 @@ const DesktopRestriction = ({ children }) => {
   // allow desktop on reset password
   const allowDesktopRoutes = ["/login/reset-password"];
 
-  if (allowDesktopRoutes.some(route => pathname.startsWith(route))) {
-    // console.log("yeah it started")
-    return children;
-  }
-
   useEffect(() => {
     setIsClient(true);
 
@@ -32,6 +27,13 @@ const DesktopRestriction = ({ children }) => {
 
     return () => window.removeEventListener("resize", checkIfMobile);
   }, []);
+
+
+  if (allowDesktopRoutes.some(route => pathname.startsWith(route))) {
+    // console.log("yeah it started")
+    return children;
+  }
+
 
   if (!isClient) {
     return (
