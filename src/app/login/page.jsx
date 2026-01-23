@@ -571,8 +571,10 @@ const page = () => {
 
           // Check user's current email verification status
           console.log(user)
+
           if (user && user.id) {
             console.log("user exists")
+
             const emailVerificationStatus = !isNewUser
               ? await checkEmailVerificationStatus()
               : { success: true, data: { emailVerified: false } };
@@ -609,6 +611,8 @@ const page = () => {
             }
           }
 
+          console.log("Proceeding 1")
+
           // If we reach here, email is verified or verification check failed
           // Continue with onboarding flow based on user's profile completion status
 
@@ -619,20 +623,41 @@ const page = () => {
             // User has completed onboarding, redirect based on user type
             setLoadingMessage("Redirecting to your dashboard...");
 
+            console.log("Proceeding 2")
+
             try {
               const statusResponse = await checkUserStatus();
+
+              console.log("Status Response")
 
               // Redirect based on user type and status
               if (user.userType === "couple") {
                 router.push("/feed/couple");
-              } else if (user.userType === "creative") {
-                if (statusResponse?.data?.status === "pending") {
+              }
+              else if (user.userType === "creative") {
+
+                console.log(statusResponse?.data)
+
+                // Profile Completed + approved + non anonymous -> go to home page
+                if (statusResponse?.data?.status === "approved" && statusResponse?.data?.isAnonymous === false) {
+                  console.log("Redirected to home page")
+                  router.push("/home"); // anonymous page
+                }
+
+                // Profile completed + pending → waiting page
+                else if (statusResponse?.data?.status === "pending" &&
+                  statusResponse?.data?.profileCompleted === true) {
                   router.push("/waiting");
-                } else {
+                }
+
+                // Profile completed + approved → feed
+                else if (statusResponse?.data?.canAccess &&
+                  statusResponse?.data?.profileCompleted === true) {
                   // Redirect creative users to /feed/new
                   router.push("/feed/new");
                 }
-              } else {
+              }
+              else {
                 // Fallback for any other user types
                 if (statusResponse?.data?.status === "pending") {
                   router.push("/waiting");
@@ -646,6 +671,10 @@ const page = () => {
             }
             return;
           }
+
+          console.log("Proceeding 3")
+
+
           console.log(user.phone)
 
           // User needs to complete onboarding - determine next step
@@ -687,58 +716,50 @@ const page = () => {
             setCurrentStep("phone-number");
           }
 
-          // if (!user.phone) {
-
-          //   console.log("User needs to complete phone number step");
-          //   setCurrentStep("phone-number");
-          //   return;
-          // }
-
-          // if (!user.assignedReferralCode) {
-          //   setCurrentStep("referral-code");
-          //   return;
-          // }
-
-          // if (!user.website) {
-          //   setCurrentStep("business-website");
-          //   return;
-          // }
-
-          // if (!user.instagram) {
-          //   setCurrentStep("business-instagram");
-          //   return;
-          // }
-
-          // if (
-          //   !user.creativeDomains ||
-          //   userProfile.creativeDomains.length === 0
-          // ) {
-          //   setCurrentStep("creative-domain");
-          //   return;
-          // }
-
-          // If all profile fields are filled but onboarding not marked complete
-
+      
           setLoadingMessage("Finalizing your account...");
 
           try {
             const statusResponse = await checkUserStatus();
+            console.log("Checking the status of user:")
             console.log(statusResponse)
 
             // Redirect based on user type and status
             if (user.userType === "couple") {
               router.push("/feed/couple");
-            } else if (user.userType === "creative") {
-              if (statusResponse?.data?.status === "pending" && statusResponse?.data?.profileCompleted === true) {
+            }
+            else if (user.userType === "creative") {
+
+               // Profile Completed + approved + non anonymous -> go to home page
+                if (statusResponse?.data?.status === "approved" && statusResponse?.data?.isAnonymous === false) {
+                  router.push("/home"); // anonymous page
+                }
+
+
+              else if (statusResponse?.data?.status === "pending" && statusResponse?.data?.profileCompleted === true) {
                 console.log("this block code executed")
                 router.push("/waiting");
-              } else {
+              }
+
+              else {
+                 // Profile Completed + approved + non anonymous -> go to home page
+                if (statusResponse?.data?.status === "approved" && statusResponse?.data?.isAnonymous === false) {
+                  router.push("/home"); // anonymous page
+                }
+
+                if (statusResponse?.data?.status === "pending" && statusResponse?.data?.profileCompleted === true) {
+                  console.log("Waiting page")
+                  router.push("/waiting");
+                }
+
                 if (statusResponse?.data?.profileCompleted === true) {
                   router.push("/feed/new");
                 }
 
               }
-            } else {
+            }
+
+            else {
               // Fallback
               if (statusResponse?.data?.status === "pending" && statusResponse?.data?.profileCompleted === true) {
                 router.push("/waiting");
@@ -945,7 +966,7 @@ const page = () => {
 
           console.log("new user is false now")
 
-          // ✅ CRITICAL: Add a small delay to ensure Zustand store persists
+          //  CRITICAL: Add a small delay to ensure Zustand store persists
           // This gives the store time to save the state before navigation
           await new Promise((resolve) => setTimeout(resolve, 150));
 
@@ -956,7 +977,8 @@ const page = () => {
 
             if (
               statusResponse.data &&
-              statusResponse.data.status === "pending"
+              statusResponse.data.status === "pending" &&
+              statusResponse.data.isAnonymous === false
             ) {
               router.push("/waiting");
             } else {

@@ -814,38 +814,38 @@ const FeedPage = ({ params = {}, singlePostMode = false, postId = null }) => {
     };
   }, []);
 
-  // useEffect(() => {
-  //   const handleVisibilityChange = () => {
-  //     if (document.visibilityState === "visible" && mountedRef.current) {
-  //       // Re-establish connection after background
-  //       if (fetchError || allPosts.length === 0) {
-  //         console.log("App resumed, refreshing feed...");
-  //         setFetchError(null);
-  //         fetchPosts(1, selectedCategory, true);
-  //       }
-  //     } else if (document.visibilityState === "hidden") {
-  //       // Cancel ongoing requests when going to background
-  //       if (abortControllerRef.current) {
-  //         abortControllerRef.current.abort();
-  //       }
-  //     }
-  //   };
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible" && mountedRef.current) {
+        // Re-establish connection after background
+        if (fetchError || allPosts.length === 0) {
+          console.log("App resumed, refreshing feed...");
+          setFetchError(null);
+          fetchPosts(1, selectedCategory, true);
+        }
+      } else if (document.visibilityState === "hidden") {
+        // Cancel ongoing requests when going to background
+        if (abortControllerRef.current) {
+          abortControllerRef.current.abort();
+        }
+      }
+    };
 
-  // const handlePageHide = () => {
-  //   // Cancel all requests when page is being hidden/unloaded
-  //   if (abortControllerRef.current) {
-  //     abortControllerRef.current.abort();
-  //   }
-  // };
+    const handlePageHide = () => {
+      // Cancel all requests when page is being hidden/unloaded
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
 
-  // document.addEventListener("visibilitychange", handleVisibilityChange);
-  // window.addEventListener("pagehide", handlePageHide);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("pagehide", handlePageHide);
 
-  //   return () => {
-  //     document.removeEventListener("visibilitychange", handleVisibilityChange);
-  //     window.removeEventListener("pagehide", handlePageHide);
-  //   };
-  // }, [selectedCategory, fetchError]); // Minimal dependencies
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("pagehide", handlePageHide);
+    };
+  }, [selectedCategory, fetchError]); // Minimal dependencies
 
   const handleManualLoadMore = useCallback(() => {
     if (

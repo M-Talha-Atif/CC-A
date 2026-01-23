@@ -42,7 +42,6 @@ const Page = () => {
   };
 
 
-
   useEffect(() => {
     if (!hasHydrated) return;
 

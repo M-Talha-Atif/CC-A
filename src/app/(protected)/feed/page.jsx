@@ -6,8 +6,9 @@ import { useParams } from "next/navigation";
 import useUserStore from "../../../store/userStore";
 
 const FeedRedirect = () => {
+  console.log("At Feed Page")
   const router = useRouter();
-   const routeParams = useParams();
+  const routeParams = useParams();
   const { isAuthenticated, hasHydrated, currentFeedCategory } = useUserStore();
   console.log("At Feed Page")
 

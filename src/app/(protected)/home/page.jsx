@@ -126,6 +126,28 @@ const HomePage = () => {
 
         // Check user status
         const statusResponse = await checkUserStatus();
+        console.log("Home Page Status Check:", statusResponse?.data);
+
+        //  CRITICAL FIX: If user is approved + non-anonymous, STAY on /home
+        if (
+          statusResponse?.data?.status === "approved" &&
+          statusResponse?.data?.isAnonymous === false
+        ) {
+          console.log(" Approved non-anonymous user - staying on /home");
+          setIsCheckingStatus(false);
+
+          // Load user data for the home page
+          setLoading(true);
+          await fetchUserData();
+          return; // STAY HERE - don't redirect
+        }
+
+        // If anonymous mode is active, redirect to feed
+        if (statusResponse?.data?.isAnonymous === true) {
+          console.log("Anonymous user, redirecting to feed");
+          safeRedirect("/feed/new", "Anonymous mode active");
+          return;
+        }
 
         // Handle rejected status - logout and redirect
         if (statusResponse?.data && statusResponse.data.status === "rejected") {
@@ -143,6 +165,12 @@ const HomePage = () => {
           return;
         }
 
+        // Profile Completed + approved + non anonymous -> go to home page
+        if (statusResponse?.data?.status === "approved" && statusResponse?.data?.isAnonymous === false) {
+          console.log("Stay at home page")
+          return;
+        }
+
         // If status check fails due to auth issues
         if (!statusResponse?.data) {
           console.log("Status check failed, redirecting to login");
@@ -156,11 +184,14 @@ const HomePage = () => {
         setIsCheckingStatus(false);
 
         // Handle user flow based on whether they just completed onboarding
-        if (user.isNewUser === false && !justCompletedOnboarding) {
-          console.log("Redirecting existing user to feed");
-          safeRedirect("/feed/new", "Existing user flow");
-          return;
-        }
+        // if (user.isNewUser === false && !justCompletedOnboarding) {
+        //   console.log("Redirecting existing user to feed");
+        //   safeRedirect("/feed/new", "Existing user flow");
+        //   return;
+        // }
+
+    
+
 
         // If user just completed onboarding OR if user is explicitly new
         if (user.isNewUser === true || justCompletedOnboarding) {
@@ -347,19 +378,19 @@ const HomePage = () => {
     return renderLoader();
   }
 
-  if (user && user.isNewUser === undefined) {
-    return renderLoader();
-  }
+  // if (user && user.isNewUser === undefined) {
+  //   return renderLoader();
+  // }
 
-  if (user && user.isNewUser === false && !hasRedirected && user.lastLoginAt===null) {
-    console.log("Early redirect: User is not new");
-    safeRedirect("/feed/new", "Early redirect - not new user");
-    return renderLoader();
-  }
+  // if (user && user.isNewUser === false && !hasRedirected && user.lastLoginAt === null) {
+  //   console.log("Early redirect: User is not new");
+  //   safeRedirect("/feed/new", "Early redirect - not new user");
+  //   return renderLoader();
+  // }
 
-  if (user.isNewUser !== true) {
-    return null;
-  }
+  // if (user.isNewUser !== true) {
+  //   return null;
+  // }
 
   return (
     <div className="max-w-md mx-auto px-7 md:px-6 py-2 mt-12">
@@ -433,7 +464,7 @@ const HomePage = () => {
             </ul>
             <br></br>
             <p className="mt-2 text-sm text-black/70">
-             Top-tier point holders unlock early access to new features.
+              Top-tier point holders unlock early access to new features.
             </p>
           </div>
         </div>
