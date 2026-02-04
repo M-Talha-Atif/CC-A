@@ -524,11 +524,17 @@ const page = () => {
             userType: "creative",
           });
 
+
           if (!response.success) {
             setLoadingMessage("");
-            toast.error(
-              "Invalid email or password. Please check your credentials."
-            );
+
+            if (response.status === 429) {
+              toast.error("Too many login/signup attempts. Please wait a few minutes and try again.");
+            } else if (response.message.includes("already exists")) {
+              toast.info("An account with this email already exists. Signing you in...");
+            } else {
+              toast.error("Invalid email or password. Please check your credentials.");
+            }
             return;
           }
 
@@ -716,7 +722,7 @@ const page = () => {
             setCurrentStep("phone-number");
           }
 
-      
+
           setLoadingMessage("Finalizing your account...");
 
           try {
@@ -730,10 +736,10 @@ const page = () => {
             }
             else if (user.userType === "creative") {
 
-               // Profile Completed + approved + non anonymous -> go to home page
-                if (statusResponse?.data?.status === "approved" && statusResponse?.data?.isAnonymous === false) {
-                  router.push("/home"); // anonymous page
-                }
+              // Profile Completed + approved + non anonymous -> go to home page
+              if (statusResponse?.data?.status === "approved" && statusResponse?.data?.isAnonymous === false) {
+                router.push("/home"); // anonymous page
+              }
 
 
               else if (statusResponse?.data?.status === "pending" && statusResponse?.data?.profileCompleted === true) {
@@ -742,7 +748,7 @@ const page = () => {
               }
 
               else {
-                 // Profile Completed + approved + non anonymous -> go to home page
+                // Profile Completed + approved + non anonymous -> go to home page
                 if (statusResponse?.data?.status === "approved" && statusResponse?.data?.isAnonymous === false) {
                   router.push("/home"); // anonymous page
                 }
@@ -776,10 +782,18 @@ const page = () => {
             router.push("/waiting");
           }
         } catch (error) {
+          
           console.error("Authentication failed:", error);
           setLoadingMessage("");
 
-          if (error.message.includes("already exists")) {
+          if (err.response?.status === 429) {
+            // Handle rate limiting
+            toast.error(
+              "Too many login/signup attempts. Please wait a few minutes and try again."
+            );
+          }
+
+          else if (error.message.includes("already exists")) {
             toast.info(
               "An account with this email already exists. Signing you in..."
             );

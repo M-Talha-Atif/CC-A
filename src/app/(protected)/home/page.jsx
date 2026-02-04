@@ -149,14 +149,21 @@ const HomePage = () => {
           return;
         }
 
-        // Handle rejected status - logout and redirect
+        
         if (statusResponse?.data && statusResponse.data.status === "rejected") {
-          console.log("User status is rejected, logging out");
-          await handleLogoutAndRedirect(
-            "Your account was rejected due to an invalid referral code. Please sign up again with a valid code."
-          );
+          console.log("User status is rejected, redirecting to waiting");
+          safeRedirect("/waiting", "User status is rejected");
           return;
         }
+
+        // // Handle rejected status - logout and redirect
+        // if (statusResponse?.data && statusResponse.data.status === "rejected") {
+        //   console.log("User status is rejected, logging out");
+        //   // await handleLogoutAndRedirect(
+        //   //   "Your account was rejected."
+        //   // );
+        //   return;
+        // }
 
         // If user status is pending, redirect to waiting page
         if (statusResponse?.data && statusResponse.data.status === "pending") {
@@ -165,11 +172,14 @@ const HomePage = () => {
           return;
         }
 
+
         // Profile Completed + approved + non anonymous -> go to home page
         if (statusResponse?.data?.status === "approved" && statusResponse?.data?.isAnonymous === false) {
           console.log("Stay at home page")
           return;
         }
+
+
 
         // If status check fails due to auth issues
         if (!statusResponse?.data) {

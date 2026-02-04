@@ -120,6 +120,7 @@ const NotificationsPage = () => {
 
     // Background API call (no await)
     if (!isRead) {
+      console.log("Reading the notification")
       markNotificationAsRead(id).catch((error) => {
         console.error("Failed to mark notification as read:", error);
         // Optional: Show toast notification of failure

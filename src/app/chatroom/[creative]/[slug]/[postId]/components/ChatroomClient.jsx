@@ -609,7 +609,7 @@ const ChatroomClient = () => {
             console.error("All fetch attempts failed:", error);
             setFetchError(
               error.message ||
-                "Failed to load post. Please check your connection and try again."
+              "Failed to load post. Please check your connection and try again."
             );
             setIsLoading(false);
           }
@@ -779,8 +779,8 @@ const ChatroomClient = () => {
       if (comments.length === 0 && !firstCommenterUsername) {
         setFirstCommenterUsername(
           result.comment.chatroomUsername ||
-            result.comment.userDisplayName ||
-            result.comment.username
+          result.comment.userDisplayName ||
+          result.comment.username
         );
       }
 
@@ -949,114 +949,128 @@ const ChatroomClient = () => {
   });
 
   const handlePostLike = requireAuth(async (postId) => {
+    console.log("=== POST LIKE DEBUG START ===");
+    console.log("Post liked - postId:", postId);
+
     const isCurrentlyLiked = likedPosts.has(postId);
-    const currentPost = post;
+    if (!post) return;
 
-    if (!currentPost) {
-      console.error("Post not found");
-      return;
-    }
+    const currentLikes = Number(post.likes || 0);
 
-    // Calculate what would happen after the like/unlike
-    const newLikeCount = isCurrentlyLiked
-      ? currentPost.likes - 1
-      : currentPost.likes + 1;
+    console.log("Current state:", {
+      isCurrentlyLiked,
+      currentLikes,
+      postLikes: post.likes,
+      likedPostsSet: Array.from(likedPosts)
+    });
 
-    const wouldLoseThreshold =
-      isCurrentlyLiked && currentPost.thresholdMet && newLikeCount < 1;
+    // Optimistic next count
+    const optimisticLikes = isCurrentlyLiked
+      ? Math.max(0, currentLikes - 1)
+      : currentLikes + 1;
+
+    console.log("Optimistic update - optimisticLikes:", optimisticLikes);
 
     // Optimistic UI update
     setLikedPosts((prev) => {
-      const newSet = new Set(prev);
-      if (isCurrentlyLiked) {
-        newSet.delete(postId);
-      } else {
-        newSet.add(postId);
-      }
-      return newSet;
+      const set = new Set(prev);
+      isCurrentlyLiked ? set.delete(postId) : set.add(postId);
+      console.log("Updated likedPosts set:", Array.from(set));
+      return set;
     });
 
-    setPost((prevPost) => ({
-      ...prevPost,
-      likes: newLikeCount,
+    setPost((prev) => ({
+      ...prev,
+      likes: optimisticLikes,
       isLiked: !isCurrentlyLiked,
     }));
 
     try {
+      console.log("Calling likePost API...");
       const result = await likePost({ postId });
 
-      // Check if the API call was successful
-      if (result.success) {
-        // SUCCESS: Backend accepted the like/unlike
-        console.log("Like operation successful:", result);
+      console.log("FULL API RESPONSE:", JSON.stringify(result, null, 2));
+      console.log("result.success:", result.success);
+      console.log("result.data:", result.data);
+      console.log("Type of result.data:", typeof result.data);
 
-        // Update with actual values from backend
-        setLikedPosts((prev) => {
-          const newSet = new Set(prev);
-          if (result.liked) {
-            newSet.add(postId);
-          } else {
-            newSet.delete(postId);
-          }
-          return newSet;
-        });
-
-        setPost((prevPost) => ({
-          ...prevPost,
-          likes: result.likes,
-          isLiked: result.liked,
-        }));
-      } else {
-        // API returned success: false, treat as error
-        throw new Error(result.error || "Like operation failed");
-      }
-    } catch (error) {
-      console.error("Failed to like post:", error);
-
-      // Check if it's the threshold protection error
-      if (
-        error.message &&
-        (error.message.includes("Cannot unlike") ||
-          error.message.includes("threshold"))
-      ) {
-        toast.error(error.message);
-      } else if (
-        error.response?.status === 400 &&
-        error.response?.data?.canUnlike === false
-      ) {
-        toast.error(
-          error.response.data.message ||
-            error.response.data.error ||
-            "Cannot unlike - this like maintains the post's threshold status"
-        );
-      } else {
-        // General error
-        if (isCurrentlyLiked) {
-          toast.error("Action not permitted.");
-        } else {
-          toast.error("Failed to like post.");
-        }
+      if (!result?.success || !result?.data) {
+        throw new Error("Like operation failed - invalid response");
       }
 
-      // REVERT optimistic update for ANY error
+      // DEBUG: Log the exact structure
+      console.log("result.data.liked:", result.data.liked);
+      console.log("result.data.likes:", result.data.likes);
+      console.log("result.data.data:", result.data.data); // Check if nested
+
+      // Check if data is nested
+      const apiData = result.data.data || result.data;
+      console.log("Using apiData:", apiData);
+
+      const { liked, likes } = apiData;
+
+      console.log("Destructured from apiData:", { liked, likes });
+
+      if (likes === undefined || liked === undefined) {
+        console.error("Missing expected fields in response:", apiData);
+      }
+
+      // ✅ Sync UI with backend truth
       setLikedPosts((prev) => {
-        const newSet = new Set(prev);
-        // Restore original state
-        if (isCurrentlyLiked) {
-          newSet.add(postId);
-        } else {
-          newSet.delete(postId);
-        }
-        return newSet;
+        const set = new Set(prev);
+        liked ? set.add(postId) : set.delete(postId);
+        console.log("Final likedPosts set after API:", Array.from(set));
+        return set;
       });
 
-      setPost((prevPost) => ({
-        ...prevPost,
-        likes: currentPost.likes, // Restore original count
-        isLiked: isCurrentlyLiked, // Restore original liked state
+      setPost((prev) => ({
+        ...prev,
+        likes: Number(likes || 0),
+        isLiked: Boolean(liked),
       }));
+
+      console.log("Like operation successful. Final post state:", {
+        likes: Number(likes || 0),
+        isLiked: Boolean(liked)
+      });
+
+      console.log("=== POST LIKE DEBUG END ===");
+
+    } catch (error) {
+      console.error("Failed to like post:", error);
+      console.error("Error details:", {
+        message: error.message,
+        response: error.response
+      });
+
+      // 🧯 Revert optimistic update
+      setLikedPosts((prev) => {
+        const set = new Set(prev);
+        isCurrentlyLiked ? set.add(postId) : set.delete(postId);
+        console.log("Reverted likedPosts set:", Array.from(set));
+        return set;
+      });
+
+      setPost((prev) => ({
+        ...prev,
+        likes: currentLikes,
+        isLiked: isCurrentlyLiked,
+      }));
+
+      // UX-safe error handling
+      if (
+        error.message?.includes("Cannot unlike") ||
+        error.message?.includes("threshold")
+      ) {
+        toast.error(error.message);
+      } else {
+        toast.error("Failed to update like");
+      }
+
+      console.log("=== POST LIKE DEBUG END (ERROR) ===");
     }
   });
+
 
   // UPDATED: handlePostSave with proper state reflection
   const handlePostSave = requireAuth(async (postId) => {
@@ -1354,7 +1368,7 @@ const ChatroomClient = () => {
             </div>
 
             <div className="text-gray-700 mb-3 leading-relaxed text-xs sm:text-[12px] break-words">
-              <LinkifyText text={post?.content} onContentClick={() => {}} />
+              <LinkifyText text={post?.content} onContentClick={() => { }} />
             </div>
 
             {/* UPDATED: Poll with 30-second edit window like feed page */}
@@ -1369,11 +1383,10 @@ const ChatroomClient = () => {
                   return (
                     <div
                       key={index}
-                      className={`w-full flex items-center justify-center gap-1 mb-2 ${
-                        (hasVoted && !canEdit) || isCoupleUser()
-                          ? "cursor-not-allowed"
-                          : "cursor-pointer"
-                      }`}
+                      className={`w-full flex items-center justify-center gap-1 mb-2 ${(hasVoted && !canEdit) || isCoupleUser()
+                        ? "cursor-not-allowed"
+                        : "cursor-pointer"
+                        }`}
                     >
                       <button
                         onClick={(e) => {
@@ -1394,17 +1407,16 @@ const ChatroomClient = () => {
                         style={{ WebkitTapHighlightColor: "transparent" }}
                       >
                         <span
-                          className={`text-sm text-gray-700 py-1 px-3 w-[200px] text-center rounded-full ease-in-out transition-all ${
-                            hasVoted
-                              ? isUserChoice
-                                ? canEdit
-                                  ? "bg-blue-200 text-blue-800 font-semibold border-2 border-blue-400 hover:bg-blue-300"
-                                  : "bg-blue-200 text-blue-800 font-semibold"
-                                : "bg-gray-200 opacity-75"
-                              : isCoupleUser() || !isAuthenticated
+                          className={`text-sm text-gray-700 py-1 px-3 w-[200px] text-center rounded-full ease-in-out transition-all ${hasVoted
+                            ? isUserChoice
+                              ? canEdit
+                                ? "bg-blue-200 text-blue-800 font-semibold border-2 border-blue-400 hover:bg-blue-300"
+                                : "bg-blue-200 text-blue-800 font-semibold"
+                              : "bg-gray-200 opacity-75"
+                            : isCoupleUser() || !isAuthenticated
                               ? "bg-gray-200 opacity-75"
                               : "bg-gray-200 hover:bg-gray-400 hover:text-white"
-                          }`}
+                            }`}
                           style={{
                             wordBreak: "break-word",
                             overflowWrap: "break-word",
@@ -1473,13 +1485,12 @@ const ChatroomClient = () => {
                             >
                               <div className="flex-1 flex justify-center">
                                 <span
-                                  className={`text-sm text-gray-700 py-1 w-[200px] text-center rounded-full ease-in-out transition-all ${
-                                    post.quotedPostSnapshot.hasVoted
-                                      ? option.isUserChoice
-                                        ? "bg-blue-200 text-blue-800 font-semibold"
-                                        : "bg-gray-200 opacity-75"
+                                  className={`text-sm text-gray-700 py-1 w-[200px] text-center rounded-full ease-in-out transition-all ${post.quotedPostSnapshot.hasVoted
+                                    ? option.isUserChoice
+                                      ? "bg-blue-200 text-blue-800 font-semibold"
                                       : "bg-gray-200 opacity-75"
-                                  }`}
+                                    : "bg-gray-200 opacity-75"
+                                    }`}
                                 >
                                   {option.text}
                                 </span>
@@ -1487,7 +1498,7 @@ const ChatroomClient = () => {
 
                               <span className="w-[50px] -ml-4 mr-8 text-xs text-left text-gray-500 font-medium">
                                 {post.quotedPostSnapshot.hasVoted &&
-                                option.percentage !== null
+                                  option.percentage !== null
                                   ? `${option.percentage}%`
                                   : ""}
                               </span>
@@ -1503,9 +1514,8 @@ const ChatroomClient = () => {
             <div className="flex items-center justify-between">
               <div className="flex items-center justify-between">
                 <div
-                  className={`flex items-center ${
-                    isCoupleUser() ? "space-x-0" : "space-x-3"
-                  } sm:space-x-3`}
+                  className={`flex items-center ${isCoupleUser() ? "space-x-0" : "space-x-3"
+                    } sm:space-x-3`}
                 >
                   {isCoupleUser() ? (
                     <div className="flex items-center space-x-1 text-gray-600">

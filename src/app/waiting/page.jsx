@@ -7,6 +7,7 @@ import useUserStore from "@/store/userStore";
 import { toast, Toaster } from "sonner";
 import SimplePopup from "../../components/Popup";
 import useHelpCenterStore from "@/hooks/useHelpCenter";
+import { clearRegistrationStorage } from "@/utils/saveToLocal";
 
 const Page = () => {
   const router = useRouter();
@@ -20,6 +21,9 @@ const Page = () => {
       // Clear session storage
       sessionStorage.removeItem("user_cache");
       sessionStorage.removeItem("last_refresh");
+      
+      // 2. Clear local storage
+      clearRegistrationStorage();
 
       // Clear Zustand store
       clearUser();
@@ -46,7 +50,7 @@ const Page = () => {
     if (!hasHydrated) return;
 
     if (!isAuthenticated) {
-      router.replace("/login?flow=creative&step=login-choice&mode=login");
+      router.replace("/login?flow=creative&step=login-choice&mode=signup");
       return;
     }
 
@@ -118,6 +122,12 @@ const Page = () => {
     };
   }, [router, hasHydrated, isAuthenticated, clearUser]);
 
+  const handleRejectedPopupClose = async () => {
+    setShowRejectedPopup(false);
+    await handleRejectedUser();
+  };
+
+
 
 
 
@@ -160,8 +170,9 @@ const Page = () => {
           message="Application Status Update
 Thank you for your interest in joining CUNO COVO, User. After careful review of your application, 
 we regret to inform you that we are unable to approve your account at this time."
-          buttonText="Continue"
+          buttonText="OK"
           onClose={handleRejectedPopupClose}
+          onModalClose={() => setShowRejectedPopup(false)}
         />
       )}
       <div className="flex w-full justify-end p-4">

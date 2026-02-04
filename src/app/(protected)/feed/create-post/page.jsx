@@ -33,9 +33,6 @@ const CreatePage = () => {
   const [isExiting, setIsExiting] = useState(false);
   const [sourcePage, setSourcePage] = useState('/feed/popular');
 
-
-
-
   // iOS-safe refs
   const textareaRef = useRef(null);
   const textareaSubjectRef = useRef(null);
@@ -146,8 +143,6 @@ const CreatePage = () => {
   }, [subject, content, selectedCategories, type, pollOptions, isDraftRestored]);
 
   // Clear draft on successful submission - modify your handleSubmit
-
-
 
   useEffect(() => {
     document.body.style.overflow = "hidden";
@@ -348,28 +343,82 @@ const CreatePage = () => {
     };
   }, [showCategoryDropdown]);
 
-  useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const quoteId = urlParams.get("quote");
+  const quoteEffectRanRef = useRef(false);
 
-    if (quoteId) {
-      fetchPostForQuote(quoteId);
+
+  // OPTIMIZED: Check for cached post data first, then fetch if needed
+  useEffect(() => {
+    if (quoteEffectRanRef.current) {
+      console.log("[QUOTE] Effect already ran, skipping");
+      return;
     }
-  }, []);
+    quoteEffectRanRef.current = true;
+
+    console.log("[QUOTE] useEffect triggered (first run)");
+
+    const quoteId = searchParams.get("quote");
+    console.log("[QUOTE] Quote ID from URL", { quoteId });
+
+    if (!quoteId) return;
+
+    const cachedPostData = sessionStorage.getItem("quotePostData");
+    console.log("[QUOTE] Cached post data found", {
+      exists: !!cachedPostData,
+    });
+
+    if (cachedPostData) {
+      try {
+        const parsedPost = JSON.parse(cachedPostData);
+
+        if (parsedPost.id === quoteId) {
+          console.log("[QUOTE] Using cached quoted post");
+
+          setQuotedPost(parsedPost);
+          setIsQuotePost(true);
+          setLoadingQuotedPost(false);
+
+          // Delay cleanup to avoid strict-mode issues
+          setTimeout(() => {
+            sessionStorage.removeItem("quotePostData");
+            console.log("[QUOTE] Cache cleared safely");
+          }, 0);
+
+          return;
+        }
+      } catch (err) {
+        console.error("[QUOTE] Cache parse failed", err);
+      }
+    }
+
+    console.log("[QUOTE] No valid cache, fetching");
+    fetchPostForQuote(quoteId);
+  }, [searchParams]);
+
+
+
 
   const fetchPostForQuote = async (postId) => {
+    if (!postId) return;
+
     try {
       setLoadingQuotedPost(true);
       const postData = await getPost(postId);
+
+      console.log("[QUOTE] Post fetched from API", {
+        postId,
+      });
+
       setQuotedPost(postData.post);
       setIsQuotePost(true);
     } catch (error) {
-      console.error("Error fetching quoted post:", error);
+      console.error("[QUOTE] Error fetching quoted post:", error);
       toast.error("Failed to load quoted post");
     } finally {
       setLoadingQuotedPost(false);
     }
   };
+
+
 
   const vendorCategories = [
     "Photographer",

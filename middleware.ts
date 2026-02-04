@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-export function middleware(request: NextRequest) {
-  const { pathname} = request.nextUrl;
+export async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
 
   // ADD THIS LOG TO SEE IF MIDDLEWARE RUNS
   console.log(`🔍 MIDDLEWARE HIT: ${pathname}`);
@@ -77,6 +77,31 @@ export function middleware(request: NextRequest) {
 
   if (!token) {
     return NextResponse.redirect(new URL("/login", request.url));
+  }
+
+  try {
+    const res = await fetch(
+      `${process.env.NEXT_PUBLIC_BASE_URL}api/auth/check-status`,
+      {
+        method: "GET",
+        headers: {
+          cookie: request.headers.get("cookie") || "",
+        },
+      }
+    );
+
+    if (res.ok) {
+      const json = await res.json();
+
+      const status = json?.data?.status;
+
+      if ((status === "pending" || status === "rejected") && pathname !== "/waiting") {
+        console.log("Redirected to the waiting page")
+        return NextResponse.redirect(new URL("/waiting", request.url));
+      }
+    }
+  } catch (err) {
+    console.log("Status check failed in middleware:", err);
   }
 
   return NextResponse.next();

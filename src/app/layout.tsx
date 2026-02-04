@@ -33,14 +33,15 @@ export const metadata: Metadata = {
     siteName: "CUNO COVO",
     locale: "en_US",
     type: "website",
-    url: "https://cunocovo.com", // Add base URL
+    url: "https://cunocovo.com",
+    // CHANGED: Use a generic OG image, NOT for_sharing.png
     images: [
       {
-        url: "https://cunocovo.com/for_sharing.png", // Remove cache-busting param for now
-        width: 1281,
-        height: 1333,
+        url: "https://cunocovo.com/for_sharing.png", // Generic site preview
+        width: 1200,
+        height: 630,
         alt: "CUNO COVO - Wedding Vendors Platform",
-        type: "image/png", // Add image type
+        type: "image/png",
       },
     ],
   },
@@ -50,14 +51,8 @@ export const metadata: Metadata = {
     title: "CUNO COVO",
     description:
       "CUNO COVO is a platform for wedding photographers, videographers, florists, and planners to share perspectives anonymously-soon helping couples discover aligned wedding talent.",
-    images: [
-      {
-        url: "https://cunocovo.com/for_sharing.png?v=1", // NEW IMAGE
-        width: 1281,
-        height: 1333,
-        alt: "CUNO COVO",
-      },
-    ]
+    // CHANGED: Use generic image
+    images: ["https://cunocovo.com/for_sharing.png"],
   },
 
   // Icons - proper format for Google search results
@@ -122,12 +117,12 @@ export default function RootLayout({
         <meta name="msapplication-TileImage" content="/sms-icon.jpg" />
 
         {/* Open Graph explicit tags for better compatibility */}
-        <meta property="og:image" content="https://cunocovo.com/for_sharing.png" />
+        {/* <meta property="og:image" content="https://cunocovo.com/for_sharing.png" />
         <meta property="og:image:secure_url" content="https://cunocovo.com/for_sharing.png" />
         <meta property="og:image:type" content="image/png" />
         <meta property="og:image:width" content="1281" />
         <meta property="og:image:height" content="1333" />
-        <meta property="og:image:alt" content="CUNO COVO - Wedding Vendors Platform" />
+        <meta property="og:image:alt" content="CUNO COVO - Wedding Vendors Platform" /> */}
 
         {/* Preload critical fonts */}
         <link

@@ -77,7 +77,7 @@ export const formatTimestamp = (dateString) => {
 };
 
 export const LinkifyText = ({ text, onContentClick }) => {
- const urlRegex = /(https?:\/\/[^\s]+|(?:www\.)?[a-zA-Z0-9-]+\.[a-zA-Z]{2,}(?:\/[^\s]*)?)/g;
+  const urlRegex = /(https?:\/\/[^\s]+|(?:www\.)?[a-zA-Z0-9-]+\.[a-zA-Z]{2,}(?:\/[^\s]*)?)/g;
 
 
   const renderTextWithLinks = (text) => {
@@ -214,6 +214,7 @@ const Post = ({
   editableVotes = new Set(),
   voteTimestamps = {},
   onPostDeleted,
+  // likingPosts = new Set(),
 }) => {
   const router = useRouter();
   const [currentUserId, setCurrentUserId] = useState(null);
@@ -229,6 +230,14 @@ const Post = ({
   const [hasReported, setHasReported] = useState(false);
   const [isReporting, setIsReporting] = useState(false);
   const [isOwnPost, setIsOwnPost] = useState(false);
+  const [localLikes, setLocalLikes] = useState(post.likes);
+
+  useEffect(() => {
+    setLocalLikes(post.likes);
+  }, [post.likes]);
+
+
+
 
   useEffect(() => {
     const checkReportStatus = async () => {
@@ -303,6 +312,10 @@ const Post = ({
   // NEW: Check if sharing/quoting should be disabled
   const shouldDisableSharing = currentCategory === "New" && !post.thresholdMet;
   const shouldDisableQuoting = currentCategory === "New" && !post.thresholdMet;
+
+
+
+  const [isCheckingReport, setIsCheckingReport] = useState(false);
 
   useEffect(() => {
     setCurrentUserId(user.id);
@@ -535,6 +548,22 @@ const Post = ({
   };
 
   // 4. Replace the handleQuoteClick function:
+  // const handleQuoteClick = (e) => {
+  //   e.stopPropagation();
+  //   e.preventDefault();
+
+  //   if (shouldDisableQuoting) {
+  //     toast.error(
+  //       "Quoting is unavailable as this post hasn't reached the threshold"
+  //     );
+  //     return;
+  //   }
+
+  //   const currentPath = window.location.pathname;
+  //   router.push(`/feed/create-post?quote=${post.id}&source=${encodeURIComponent(currentPath)}`);
+  // };"
+  // 
+
   const handleQuoteClick = (e) => {
     e.stopPropagation();
     e.preventDefault();
@@ -547,6 +576,19 @@ const Post = ({
     }
 
     const currentPath = window.location.pathname;
+
+    // Store the post data in sessionStorage for immediate access
+    sessionStorage.setItem('quotePostData', JSON.stringify({
+      id: post.id,
+      subject: post.subject,
+      content: post.content,
+      categories: post.categories,
+      type: post.type,
+      pollOptions: post.pollOptions,
+      hasVoted: post.hasVoted,
+      createdAt: post.createdAt,
+    }));
+
     router.push(`/feed/create-post?quote=${post.id}&source=${encodeURIComponent(currentPath)}`);
   };
 
@@ -586,11 +628,31 @@ const Post = ({
   };
 
   const handleInfoClick = (e) => {
-    console.log("Info click triggered"); // Debug log
     e.stopPropagation();
     e.preventDefault();
-    e.nativeEvent.stopImmediatePropagation(); // ADDED: Stop ALL propagation
+    e.nativeEvent.stopImmediatePropagation();
+
+    // OPTIMIZED: Show modal immediately for better UX
     setShowReportModal(true);
+
+    // Only check if we don't already know the status
+    if (isAuthenticated && post.id && !hasReported && !isOwnPost) {
+      setIsCheckingReport(true);
+
+      checkUserReport(post.id)
+        .then((response) => {
+          if (response.success) {
+            setHasReported(response.data.hasReported);
+            setIsOwnPost(response.data.isOwnPost || false);
+          }
+        })
+        .catch((error) => {
+          console.error("Failed to check report status:", error);
+        })
+        .finally(() => {
+          setIsCheckingReport(false);
+        });
+    }
   };
 
   const handleReportModalClose = (e) => {
@@ -905,7 +967,8 @@ const Post = ({
                 <HeartIcon
                   className={isLiked ? "fill-red-600 text-red-600" : ""}
                 />
-                <span className="text-sm">{post.likes > 0 && post.likes}</span>
+                {/* <span className="text-sm">{post.likes > 0 && post.likes}</span> */}
+                {localLikes > 0 && <span className="text-sm">{localLikes}</span>}
               </button>
 
               {/* Reply/Comment button - Hidden ONLY if current category is Couples */}
@@ -1008,15 +1071,23 @@ const Post = ({
                     >
                       <div className="text-center">
                         <p className="text-gray-600 text-xs mb-3">
-                          {isOwnPost
-                            ? "You cannot report your own post"
-                            : hasReported
-                              ? "You have already reported this post"
-                              : "Report this post for containing abuse, harassment, or spam."}
+                          {
+                            isCheckingReport
+                              ? "Checking report status..."
+                              : isOwnPost
+                                ? "You cannot report your own post"
+                                : hasReported
+                                  ? "You have already reported this post"
+                                  : "Report this post for containing abuse, harassment, or spam."}
                         </p>
 
                         <div className="space-y-3">
-                          {isOwnPost || hasReported ? (
+                          {isCheckingReport ? (
+                            // Loading spinner for report status checking
+                            <div className="flex justify-center py-2">
+                              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-900"></div>
+                            </div>
+                          ) : isOwnPost || hasReported ? (
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();

@@ -66,6 +66,7 @@ import SeeAllIcon from "../../../../components/icons/FilterIcons/SeeAllIcon";
 import Portal from "../../../../components/Portal";
 import { useScrollVisibility } from "@/hooks/useScrollVisibilityContext";
 import Spinner from "./Spinner"
+import { useLikePost } from '@/hooks/useLikePost';
 
 const FeedPage = ({ params = {}, singlePostMode = false, postId = null }) => {
   const router = useRouter();
@@ -84,6 +85,7 @@ const FeedPage = ({ params = {}, singlePostMode = false, postId = null }) => {
   const [globalSearchResults, setGlobalSearchResults] = useState([]);
   const [isGlobalSearching, setIsGlobalSearching] = useState(false);
   const [globalSearchError, setGlobalSearchError] = useState(null);
+
   // Get category from URL params
   const urlCategory = routeParams.category;
 
@@ -195,8 +197,6 @@ const FeedPage = ({ params = {}, singlePostMode = false, postId = null }) => {
 
 
 
-
-
   // 3. Update getCategoriesForUser array
   const getCategoriesForUser = useMemo(() => {
     if (!isAuthenticated) {
@@ -280,6 +280,7 @@ const FeedPage = ({ params = {}, singlePostMode = false, postId = null }) => {
   const [savedPosts, setSavedPosts] = useState(new Set());
   const [voting, setVoting] = useState({});
 
+
   const [showLoginPrompt, setShowLoginPrompt] = useState(false);
   const [chatroomModal, setChatroomModal] = useState({
     isOpen: false,
@@ -295,6 +296,17 @@ const FeedPage = ({ params = {}, singlePostMode = false, postId = null }) => {
   const [singlePost, setSinglePost] = useState(null);
   const [singlePostLoading, setSinglePostLoading] = useState(false);
   const [singlePostError, setSinglePostError] = useState(null);
+
+  // Like Post Hook
+  const { handleLike } = useLikePost({  
+    isAuthenticated,
+    allPosts,
+    setAllPosts,
+    likedPosts,
+    setLikedPosts,
+    selectedCategory,
+    setShowLoginPrompt,
+  });
 
   const POSTS_PER_PAGE = 10;
   //   let rafId;
@@ -529,7 +541,7 @@ const FeedPage = ({ params = {}, singlePostMode = false, postId = null }) => {
             if (mountedRef.current && !loadingRef.current) {
               fetchPosts(page, category, reset);
             }
-          }, 3000);
+          }, 13000);
         }
       } finally {
         if (mountedRef.current) {
@@ -924,177 +936,167 @@ const FeedPage = ({ params = {}, singlePostMode = false, postId = null }) => {
     fetchPosts(1, selectedCategory, true);
   }, [fetchPosts, selectedCategory]);
 
-  const handleLike = useCallback(
-    async (postId) => {
-      if (!isAuthenticated) {
-        setShowLoginPrompt(true);
-        return;
-      }
+  // const handleLike = useCallback(
+  //   async (postId) => {
+  //     if (!isAuthenticated) {
+  //       setShowLoginPrompt(true);
+  //       return;
+  //     }
 
-      const isCurrentlyLiked = likedPosts.has(postId);
-      const currentPost = allPosts.find((post) => post.id === postId);
+  //     const currentPost = allPosts.find((post) => post.id === postId);
+  //     if (!currentPost) {
+  //       console.error("Post not found in allPosts");
+  //       return;
+  //     }
 
-      if (!currentPost) {
-        console.error("Post not found in allPosts");
-        return;
-      }
+  //     const isCurrentlyLiked = likedPosts.has(postId);
+  //     const newLikeCount = isCurrentlyLiked
+  //       ? currentPost.likes - 1
+  //       : currentPost.likes + 1;
 
-      // Calculate what would happen after the like/unlike
-      const newLikeCount = isCurrentlyLiked
-        ? currentPost.likes - 1
-        : currentPost.likes + 1;
+  //     const willMeetThreshold =
+  //       !isCurrentlyLiked && !currentPost.thresholdMet && newLikeCount >= 1;
+  //     const wouldLoseThreshold =
+  //       isCurrentlyLiked && currentPost.thresholdMet && newLikeCount < 1;
 
-      const willMeetThreshold =
-        !isCurrentlyLiked && !currentPost.thresholdMet && newLikeCount >= 1;
+  //     // 1. Optimistic UI update
+  //     setLikedPosts((prev) => {
+  //       const newSet = new Set(prev);
+  //       if (newSet.has(postId)) {
+  //         newSet.delete(postId);
+  //       } else {
+  //         newSet.add(postId);
+  //       }
+  //       return newSet;
+  //     });
 
-      const wouldLoseThreshold =
-        isCurrentlyLiked && currentPost.thresholdMet && newLikeCount < 1;
+  //     setAllPosts((prevPosts) =>
+  //       prevPosts.map((post) =>
+  //         post.id === postId
+  //           ? {
+  //             ...post,
+  //             likes: newLikeCount,
+  //             isLiked: !isCurrentlyLiked,
+  //             thresholdMet: willMeetThreshold
+  //               ? true
+  //               : wouldLoseThreshold
+  //                 ? false
+  //                 : post.thresholdMet,
+  //             commentsEnabled: willMeetThreshold
+  //               ? true
+  //               : wouldLoseThreshold
+  //                 ? false
+  //                 : post.commentsEnabled,
+  //             commentsEnabledAt: willMeetThreshold
+  //               ? new Date().toISOString()
+  //               : wouldLoseThreshold
+  //                 ? null
+  //                 : post.commentsEnabledAt,
+  //           }
+  //           : post
+  //       )
+  //     );
 
-      // Optimistic UI update
-      setLikedPosts((prev) => {
-        const newSet = new Set(prev);
-        newSet.has(postId) ? newSet.delete(postId) : newSet.add(postId);
-        return newSet;
-      });
+  //     try {
+  //       const response = await likePost({ postId });
 
-      const updatePostLike = (prevPosts) =>
-        prevPosts.map((post) =>
-          post.id === postId
-            ? {
-              ...post,
-              likes: newLikeCount,
-              isLiked: !isCurrentlyLiked,
-              thresholdMet: willMeetThreshold
-                ? true
-                : wouldLoseThreshold
-                  ? false
-                  : post.thresholdMet,
-              commentsEnabled: willMeetThreshold
-                ? true
-                : wouldLoseThreshold
-                  ? false
-                  : post.commentsEnabled,
-              commentsEnabledAt: willMeetThreshold
-                ? new Date().toISOString()
-                : wouldLoseThreshold
-                  ? null
-                  : post.commentsEnabledAt,
-            }
-            : post
-        );
+  //       if (!response || !response.success) {
+  //         throw new Error(response?.error || "Like operation failed");
+  //       }
 
-      setAllPosts(updatePostLike);
+  //       console.log("✅ Like operation successful:", response);
 
-      // Only remove from "New" feed if threshold is met (not if it would be lost due to unlike)
-      if (willMeetThreshold && selectedCategory === "New") {
-        setTimeout(() => {
-          setAllPosts((prevPosts) =>
-            prevPosts.filter((post) => post.id !== postId)
-          );
-        }, 1000);
-      }
+  //       // FIX: Access the correct nested data structure
+  //       const serverData = response.data; // This contains the actual API response
 
-      try {
-        const response = await likePost({ postId });
+  //       console.log("Server Data: :", serverData);
 
-        // Check if the API call was successful
-        if (response.success) {
-          // SUCCESS: Backend accepted the like/unlike
-          console.log("Like operation successful:", response.data);
+  //       // Update posts with actual server response
+  //       setAllPosts((prevPosts) =>
+  //         prevPosts.map((post) =>
+  //           post.id === postId
+  //             ? {
+  //               ...post,
+  //               likes: serverData.likes,           //  Now correctly accesses likes
+  //               isLiked: serverData.liked,         //  Correct
+  //               thresholdMet: serverData.thresholdMet !== undefined
+  //                 ? serverData.thresholdMet
+  //                 : post.thresholdMet,
+  //               commentsEnabled: serverData.commentsEnabled !== undefined
+  //                 ? serverData.commentsEnabled
+  //                 : post.commentsEnabled,
+  //             }
+  //             : post
+  //         )
+  //       );
 
-          // If the post just lost threshold and we're NOT in "New" category,
-          // remove it from current feed (it should go back to "New")
-          if (wouldLoseThreshold && selectedCategory !== "New") {
-            setTimeout(() => {
-              setAllPosts((prevPosts) =>
-                prevPosts.filter((post) => post.id !== postId)
-              );
-            }, 1000);
-          }
-        } else {
-          // API returned success: false, treat as error
-          throw new Error(response.error || "Like operation failed");
-        }
-      } catch (error) {
-        console.error("Like failed:", error);
+  //       // Remove from feed if threshold met/lost
+  //       if (willMeetThreshold && selectedCategory === "New") {
+  //         setTimeout(() => {
+  //           setAllPosts((prevPosts) =>
+  //             prevPosts.filter((post) => post.id !== postId)
+  //           );
+  //         }, 1000);
+  //       }
 
-        // First check if it's our custom API response with success: false
-        if (error.message && !error.response) {
-          // This is from our API wrapper
-          if (
-            error.message.includes("Cannot unlike") ||
-            error.message.includes("threshold")
-          ) {
-            toast.error(error.message);
-          } else {
-            // General API error
-            if (isCurrentlyLiked) {
-              toast.error("Action not permitted.");
-            } else {
-              toast.error("Failed to like post.");
-            }
-          }
-        } else if (error.response) {
-          // Direct axios error (backup case)
-          if (
-            error.response.status === 400 &&
-            error.response.data?.canUnlike === false
-          ) {
-            toast.error(
-              error.response.data.message ||
-              error.response.data.error ||
-              "Cannot unlike - this like maintains the post's threshold status"
-            );
-          } else {
-            const errorMsg =
-              error.response.data?.message || error.response.data?.error;
-            if (errorMsg) {
-              toast.error(errorMsg);
-            } else {
-              if (isCurrentlyLiked) {
-                toast.error("Action not permitted.");
-              } else {
-                toast.error("Failed to like post.");
-              }
-            }
-          }
-        } else {
-          // Network or other error
-          if (isCurrentlyLiked) {
-            toast.error("Action not permitted.");
-          } else {
-            toast.error("Failed to like post.");
-          }
-        }
+  //       if (wouldLoseThreshold && selectedCategory !== "New") {
+  //         setTimeout(() => {
+  //           setAllPosts((prevPosts) =>
+  //             prevPosts.filter((post) => post.id !== postId)
+  //           );
+  //         }, 1000);
+  //       }
 
-        // Revert the optimistic UI update for ANY error
-        setLikedPosts((prev) => {
-          const newSet = new Set(prev);
-          // Restore the original liked state
-          isCurrentlyLiked ? newSet.add(postId) : newSet.delete(postId);
-          return newSet;
-        });
+  //     } catch (error) {
+  //       console.error("❌ Like operation failed:", error);
 
-        // Revert the post state to original for ANY error
-        const revertPostLike = (prevPosts) =>
-          prevPosts.map((post) =>
-            post.id === postId
-              ? {
-                ...post,
-                likes: currentPost.likes, // Restore original like count
-                isLiked: isCurrentlyLiked, // Restore original liked state
-                thresholdMet: currentPost.thresholdMet, // Restore original threshold
-                commentsEnabled: currentPost.commentsEnabled,
-                commentsEnabledAt: currentPost.commentsEnabledAt,
-              }
-              : post
-          );
+  //       // Revert liked state
+  //       setLikedPosts((prev) => {
+  //         const newSet = new Set(prev);
+  //         if (isCurrentlyLiked) {
+  //           newSet.add(postId);
+  //         } else {
+  //           newSet.delete(postId);
+  //         }
+  //         return newSet;
+  //       });
 
-        setAllPosts(revertPostLike);
-      }
-    },
-    [isAuthenticated, likedPosts, allPosts, selectedCategory]
-  );
+  //       // Revert post state
+  //       setAllPosts((prevPosts) =>
+  //         prevPosts.map((post) =>
+  //           post.id === postId
+  //             ? {
+  //               ...post,
+  //               likes: currentPost.likes,
+  //               isLiked: isCurrentlyLiked,
+  //               thresholdMet: currentPost.thresholdMet,
+  //               commentsEnabled: currentPost.commentsEnabled,
+  //               commentsEnabledAt: currentPost.commentsEnabledAt,
+  //             }
+  //             : post
+  //         )
+  //       );
+
+  //       // Show appropriate error message
+  //       if (error.message) {
+  //         if (error.message.includes("Cannot unlike") ||
+  //           error.message.includes("threshold")) {
+  //           toast.error(error.message);
+  //         } else if (error.message.includes("already liked")) {
+  //           toast.error("You have already liked this post");
+  //         } else {
+  //           toast.error(isCurrentlyLiked
+  //             ? "Failed to unlike post"
+  //             : "Failed to like post"
+  //           );
+  //         }
+  //       } else {
+  //         toast.error("Network error. Please try again.");
+  //       }
+  //     }
+  //   },
+  //   [isAuthenticated, likedPosts, allPosts, selectedCategory]
+  // );
 
   const handleSave = useCallback(
     async (postId) => {
@@ -1656,6 +1658,7 @@ const FeedPage = ({ params = {}, singlePostMode = false, postId = null }) => {
                   voting={voting}
                   handleLike={handleLike}
                   likedPosts={likedPosts}
+                  // likingPosts={likingPosts}
                   handleSave={handleSave}
                   savedPosts={savedPosts}
                   handleChatroomClick={handleChatroomClick}
@@ -1840,7 +1843,7 @@ const FeedPage = ({ params = {}, singlePostMode = false, postId = null }) => {
             }`}
         >
           {isCheckingEligibility ? (
-            <Spinner size={32} className="text-white" />
+            <Spinner size={32} className="text-black" />
           ) : (
             <PostingIcon size={56} />
           )}

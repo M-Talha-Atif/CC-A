@@ -90,7 +90,7 @@ const ChatroomClient = () => {
   const [showReportModal, setShowReportModal] = useState(false);
   const [voting, setVoting] = useState({});
 
- 
+
 
   const showToast = (message, type = "info") => {
     setToast({ message, type });
@@ -285,6 +285,8 @@ const ChatroomClient = () => {
       setReplyTo(null);
       setSelectedMentions([]);
       setShowMentions(false);
+
+      console.log("Commented is posted")
     } catch (error) {
       console.error("Failed to post comment:", error);
       showToast("Failed to post comment", "error");
@@ -415,37 +417,137 @@ const ChatroomClient = () => {
     });
   });
 
-  // Fixed handlePostLike to use API and update correctly
   const handlePostLike = requireAuth(async (postId) => {
-    try {
-      const result = await likePost({ postId }); // Use the API
+    const isCurrentlyLiked = likedPosts.has(postId);
+    const currentLikes = Number(post?.likes || 0);
 
-      setLikedPosts((prev) => {
-        const newSet = new Set(prev);
-        if (result.liked) {
-          newSet.add(postId);
-        } else {
-          newSet.delete(postId);
-        }
-        return newSet;
+    console.log("Current like status:", {
+      isCurrentlyLiked,
+      currentLikes,
+      postId,
+      likedPosts: Array.from(likedPosts) // Log for debugging
+    });
+
+    // Optimistic update - update both likedPosts Set AND post state
+    setLikedPosts((prev) => {
+      const s = new Set(prev);
+      if (isCurrentlyLiked) {
+        s.delete(postId);
+      } else {
+        s.add(postId);
+      }
+      return s;
+    });
+
+    setPost((prev) => ({
+      ...prev,
+      likes: isCurrentlyLiked ? currentLikes - 1 : currentLikes + 1,
+      isLiked: !isCurrentlyLiked,
+    }));
+
+    try {
+      const result = await likePost({ postId });
+      console.log("Full API response:", result);
+      console.log("result.data:", result.data);
+
+      if (!result.success) {
+        console.error("API returned success false:", result.error);
+        throw new Error(result.error || "Like failed");
+      }
+
+      // CRITICAL FIX: The backend response is in result.data directly
+      // Your backend returns: { liked: true, likes: 5, message: "Post liked" }
+      // So result.data contains { liked, likes, message } NOT result.data.data
+      const apiData = result.data;
+
+      console.log("API data destructured:", {
+        likes: apiData.likes,
+        liked: apiData.liked,
+        message: apiData.message
       });
 
-      // Update the post state with the actual like count from the API
-      setPost((prevPost) => ({
-        ...prevPost,
-        likes: result.likes, // Use the actual count from API
-        isLiked: result.liked,
+      // Update with actual API response
+      setPost((prev) => ({
+        ...prev,
+        likes: apiData.likes || (isCurrentlyLiked ? currentLikes - 1 : currentLikes + 1),
+        isLiked: apiData.liked !== undefined ? apiData.liked : !isCurrentlyLiked,
       }));
-    } catch (error) {
-      console.error("Failed to like post:", error);
-      showToast("Failed to like post", "error");
+
+      // Also update likedPosts Set to match API response
+      setLikedPosts((prev) => {
+        const s = new Set(prev);
+        if (apiData.liked) {
+          s.add(postId);
+        } else {
+          s.delete(postId);
+        }
+        return s;
+      });
+
+      console.log("After update - likedPosts:", Array.from(likedPosts));
+
+    } catch (err) {
+      console.error("Like operation failed:", err.message || err);
+
+      // Revert on failure
+      setLikedPosts((prev) => {
+        const s = new Set(prev);
+        // Revert to original state
+        if (isCurrentlyLiked) {
+          s.add(postId);
+        } else {
+          s.delete(postId);
+        }
+        return s;
+      });
+
+      setPost((prev) => ({
+        ...prev,
+        likes: currentLikes,
+        isLiked: isCurrentlyLiked,
+      }));
+
+      showToast(err.message || "Failed to update like", "error");
     }
   });
 
-  // Fixed handlePostSave to use API and update correctly
+
+  // UPDATED: handlePostSave with proper state reflection
   const handlePostSave = requireAuth(async (postId) => {
+    const isCurrentlySaved = savedPosts.has(postId);
+    const currentSaveCount = post.saves || 0;
+
+    // Optimistic update
+    setSavedPosts((prev) => {
+      const newSet = new Set(prev);
+      if (isCurrentlySaved) {
+        newSet.delete(postId);
+      } else {
+        newSet.add(postId);
+      }
+      return newSet;
+    });
+
+    // CRITICAL FIX: Update post state immediately for consistency
+    setPost((prevPost) => ({
+      ...prevPost,
+      saves: isCurrentlySaved
+        ? Math.max(0, currentSaveCount - 1)
+        : currentSaveCount + 1,
+      isSaved: !isCurrentlySaved,
+    }));
+
     try {
-      const result = await savePost({ postId }); // Use the API
+      const result = await savePost({ postId });
+
+      // Sync with API response if different
+      if (result.saves !== undefined) {
+        setPost((prevPost) => ({
+          ...prevPost,
+          saves: result.saves,
+          isSaved: result.saved,
+        }));
+      }
 
       setSavedPosts((prev) => {
         const newSet = new Set(prev);
@@ -456,18 +558,30 @@ const ChatroomClient = () => {
         }
         return newSet;
       });
-
-      // Update the post state with the actual save count from the API
-      setPost((prevPost) => ({
-        ...prevPost,
-        saves: result.saves, // Use the actual count from API
-        isSaved: result.saved,
-      }));
     } catch (error) {
       console.error("Failed to save post:", error);
-      showToast("Failed to save post", "error");
+
+      // Revert optimistic update
+      setSavedPosts((prev) => {
+        const newSet = new Set(prev);
+        if (isCurrentlySaved) {
+          newSet.add(postId);
+        } else {
+          newSet.delete(postId);
+        }
+        return newSet;
+      });
+
+      setPost((prevPost) => ({
+        ...prevPost,
+        saves: currentSaveCount,
+        isSaved: isCurrentlySaved,
+      }));
+
+      toast.error("Failed to save post");
     }
   });
+
 
   // Add missing handlers for share and report functionality
   const handleShareClick = requireAuth((e) => {

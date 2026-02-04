@@ -48,6 +48,16 @@ export async function generateMetadata({ params }) {
           description: "The requested post could not be found.",
           images: ["https://cunocovo.com/api/og/default"],
         },
+        // ADD THIS: Instagram icon
+        icons: {
+          icon: [
+            { url: "/faviIcons/favicon-32x32.png", sizes: "32x32", type: "image/png" },
+            { url: "/faviIcons/android-chrome-192x192.png", sizes: "192x192", type: "image/png" },
+          ],
+          apple: [
+            { url: "/faviIcons/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
+          ],
+        },
       };
     }
 
@@ -115,6 +125,16 @@ export async function generateMetadata({ params }) {
         images: [previewImageUrl],
         creator: `@${postData.userDisplayName}`,
       },
+      // ADD THIS: Instagram icon support
+      icons: {
+        icon: [
+          { url: "/faviIcons/favicon-32x32.png", sizes: "32x32", type: "image/png" },
+          { url: "/faviIcons/android-chrome-192x192.png", sizes: "192x192", type: "image/png" },
+        ],
+        apple: [
+          { url: "/faviIcons/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
+        ],
+      },
       other: {
         "og:image:width": "1200",
         "og:image:height": "630",
@@ -167,6 +187,16 @@ export async function generateMetadata({ params }) {
         title: "Error loading post - Cuno Covo",
         description: "There was an error loading this post.",
         images: ["https://cunocovo.com/api/og/error"],
+      },
+      // ADD THIS: Instagram icon
+      icons: {
+        icon: [
+          { url: "/faviIcons/favicon-32x32.png", sizes: "32x32", type: "image/png" },
+          { url: "/faviIcons/android-chrome-192x192.png", sizes: "192x192", type: "image/png" },
+        ],
+        apple: [
+          { url: "/faviIcons/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
+        ],
       },
     };
   }

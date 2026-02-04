@@ -237,11 +237,13 @@ export const register = async ({ email, password, userType }) => {
       success: true,
       data: data.data,
       message: data.message || "Registration successful!",
+      status: 200,
     };
   } catch (error) {
     console.log(error)
     return {
       success: false,
+      status: error.response?.status || 500,
       message: error.response?.data?.message || "Registration failed",
     };
   }
@@ -1024,7 +1026,7 @@ export const getSavedPosts = async (query = {}) => {
 // COMMENTS
 // ==========================================
 
-export const fetchComments = async (postId, page = 1, limit = 20) => {
+export const fetchComments = async (postId, page = 1, limit = 100) => {
   try {
     const result = await makeAuthenticatedRequest(
       `${process.env.NEXT_PUBLIC_BASE_URL}api/post/comment/${postId}`,
