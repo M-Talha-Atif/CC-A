@@ -8,7 +8,7 @@ import {
   Vote,
 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { createPost, getPost } from "../../../../../action";
+import { createPost, getPost, checkPostingEligibility,} from "../../../../../action";
 import { toast, Toaster } from "sonner";
 import { LinkifyText } from "../components/Post";
 import useUserStore from "@/store/userStore";
@@ -643,30 +643,123 @@ const CreatePage = () => {
 
   const isCouplesSelected = selectedCategories.includes("Couples");
 
+  // const handleSubmit = async () => {
+  //   try {
+  //     setLoading(true);
+
+  //     if (subject.trim() === "") {
+  //       toast.error("Subject is required.");
+  //       setLoading(false);
+  //       return;
+  //     }
+  //     if (content.trim() === "") {
+  //       toast.error("Need to input body text");
+  //       setLoading(false);
+  //       return;
+  //     }
+
+  //     if (selectedCategories.length < 0) {
+  //       toast.error("Creative is required");
+  //       setLoading(false);
+  //       return;
+  //     }
+
+  //     if (containsUrl(subject)) {
+  //       toast.error("Links are not allowed in the subject.");
+  //       setLoading(false);
+  //       return;
+  //     }
+
+  //     const payload = {
+  //       subject,
+  //       content,
+  //       categories: selectedCategories,
+  //       type,
+  //     };
+
+  //     if (isQuotePost && quotedPost) {
+  //       payload.quotedPostId = quotedPost.id;
+  //     }
+
+  //     if (type === "poll") {
+  //       const nonEmptyOptions = pollOptions.filter((opt) => opt.trim() !== "");
+  //       if (nonEmptyOptions.length < 2) {
+  //         toast.error("A poll requires at least two options.");
+  //         setLoading(false);
+  //         return;
+  //       }
+  //       payload.pollOptions = nonEmptyOptions;
+  //     }
+
+  //     const result = await createPost(payload);
+
+  //     if (result.success) {
+  //       clearDraft(); // clear draft
+  //       delete window.handleCreatePageBack;
+  //       toast.success("Post created successfully!");
+  //       router.push("/feed/new");
+  //     } else {
+  //       // Handle rate limit error specifically
+  //       if (result.error.status === 429) {
+  //         toast.error(
+  //           result.error.message ||
+  //           "You have hit the limit allowed for this hour. Please try again later",
+  //           {
+  //             duration: 5000,
+  //           }
+  //         );
+  //       } else {
+  //         toast.error(result.error.message);
+  //       }
+  //     }
+  //   } catch (error) {
+  //     console.error("Unexpected error creating post:", error);
+  //     toast.error("An unexpected error occurred");
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
+
   const handleSubmit = async () => {
     try {
       setLoading(true);
 
-      if (subject.trim() === "") {
-        toast.error("Subject is required.");
-        setLoading(false);
-        return;
-      }
-      if (content.trim() === "") {
-        toast.error("Need to input body text");
-        setLoading(false);
+      // FINAL eligibility gate
+      const eligibilityResponse = await checkPostingEligibility();
+
+      if (!eligibilityResponse?.success) {
+        toast.error("Failed to check posting eligibility");
         return;
       }
 
-      if (selectedCategories.length < 0) {
+      const { canPost, likesRemaining } = eligibilityResponse.data;
+
+      if (!canPost) {
+        toast.error(
+          `Like ${likesRemaining} post${likesRemaining !== 1 ? "s" : ""} to unlock posting`,
+          { duration: 3000 }
+        );
+        return;
+      }
+
+      // ---------- existing validations ----------
+      if (!subject.trim()) {
+        toast.error("Subject is required.");
+        return;
+      }
+
+      if (!content.trim()) {
+        toast.error("Need to input body text");
+        return;
+      }
+
+      if (selectedCategories.length === 0) {
         toast.error("Creative is required");
-        setLoading(false);
         return;
       }
 
       if (containsUrl(subject)) {
         toast.error("Links are not allowed in the subject.");
-        setLoading(false);
         return;
       }
 
@@ -682,10 +775,9 @@ const CreatePage = () => {
       }
 
       if (type === "poll") {
-        const nonEmptyOptions = pollOptions.filter((opt) => opt.trim() !== "");
+        const nonEmptyOptions = pollOptions.filter(opt => opt.trim());
         if (nonEmptyOptions.length < 2) {
           toast.error("A poll requires at least two options.");
-          setLoading(false);
           return;
         }
         payload.pollOptions = nonEmptyOptions;
@@ -694,31 +786,27 @@ const CreatePage = () => {
       const result = await createPost(payload);
 
       if (result.success) {
-        clearDraft(); // clear draft
+        clearDraft();
         delete window.handleCreatePageBack;
         toast.success("Post created successfully!");
         router.push("/feed/new");
+      } else if (result.error?.status === 429) {
+        toast.error(
+          result.error.message ||
+          "You have hit the hourly limit. Please try again later",
+          { duration: 5000 }
+        );
       } else {
-        // Handle rate limit error specifically
-        if (result.error.status === 429) {
-          toast.error(
-            result.error.message ||
-            "You have hit the limit allowed for this hour. Please try again later",
-            {
-              duration: 5000,
-            }
-          );
-        } else {
-          toast.error(result.error.message);
-        }
+        toast.error(result.error?.message || "Failed to create post");
       }
-    } catch (error) {
-      console.error("Unexpected error creating post:", error);
+    } catch (err) {
+      console.error(err);
       toast.error("An unexpected error occurred");
     } finally {
       setLoading(false);
     }
   };
+
 
   const QuotedPostLoadingSkeleton = () => {
     return (

@@ -305,11 +305,11 @@ export const googleLoginCouple = async (googleToken, userType) => {
   }
 };
 
-export const checkEmailExists = async (email) => {
+export const checkEmailExists = async (email, authMode = 'signup') => {
   try {
     const { data } = await axios.post(
       `${process.env.NEXT_PUBLIC_BASE_URL}api/auth/check-email`,
-      { email },
+      { email, authMode },
       {
         headers: {
           "Content-Type": "application/json",
@@ -799,25 +799,25 @@ export const getCoupleFeed = async (
   }
 };
 
+
 export const globalSearch = async (
   query,
   page = 1,
   limit = 10,
   sortBy = "newest",
-  categories = ""
+  mainCategory = "",
+  subFilter = ""
 ) => {
   const result = await makeAuthenticatedRequest(
     `${process.env.NEXT_PUBLIC_BASE_URL}api/post/global`,
     {
       method: "GET",
-      params: { query, page, limit, sortBy, categories },
+      params: { query, page, limit, sortBy, mainCategory, subFilter },
     }
   );
-
   if (result.success) {
     return result.data;
   }
-
   throw new Error("Failed to perform global search");
 };
 

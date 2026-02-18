@@ -1145,8 +1145,21 @@ const ChatroomClient = () => {
   const handleQuoteClick = (e) => {
     e.stopPropagation();
     e.preventDefault();
+    const currentPath = window.location.pathname;
+    // Store the post data in sessionStorage for immediate access
+    sessionStorage.setItem('quotePostData', JSON.stringify({
+      id: post.id,
+      subject: post.subject,
+      content: post.content,
+      categories: post.categories,
+      type: post.type,
+      pollOptions: post.pollOptions,
+      hasVoted: post.hasVoted,
+      createdAt: post.createdAt,
+    }));
+
     if (!isCoupleUser() && isAuthenticated) {
-      router.push(`/feed/create-post?quote=${post.id}`);
+       router.push(`/feed/create-post?quote=${post.id}&source=${encodeURIComponent(currentPath)}`);
     }
   };
 

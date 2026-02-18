@@ -9,7 +9,7 @@ const FeedRedirect = () => {
   console.log("At Feed Page")
   const router = useRouter();
   const routeParams = useParams();
-  const { isAuthenticated, hasHydrated, currentFeedCategory } = useUserStore();
+  const { isAuthenticated, hasHydrated, currentFeedCategory, user} = useUserStore();
   console.log("At Feed Page")
 
   useEffect(() => {
@@ -19,9 +19,16 @@ const FeedRedirect = () => {
     const protectedCategories = ["new", "bookmark", "my-posts", "chatrooms"];
 
     if (protectedCategories.includes(urlCategory) && !isAuthenticated) {
-      console.log(`⚠️ FeedPage: Unauthorized access to ${urlCategory}, redirecting to popular`);
+      console.log(`-1) FeedPage: Unauthorized access to ${urlCategory}, redirecting to popular`);
       router.replace("/feed/popular");
     }
+
+    // if user is rejected, pending or in waiting or home page state
+    // if (user?.canAccessProtectedPages === false) {
+    //   console.log(`- 2) FeedPage: User doesn't have access to protected page ${urlCategory}, redirecting to popular`);
+    //   router.replace("/feed/popular");
+    //   return;
+    // }
   }, [hasHydrated, isAuthenticated, routeParams.category, router]);
 
   useEffect(() => {

@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import useUserStore from "@/store/userStore";
 
 export default function Home() {
-  const { user, isAuthenticated, hasHydrated } = useUserStore();
+  const { user, isAuthenticated, hasHydrated, setUser } = useUserStore();
   const router = useRouter();
 
   useEffect(() => {

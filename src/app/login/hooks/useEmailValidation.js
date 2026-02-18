@@ -43,7 +43,7 @@ export const useEmailValidation = (authMode = 'signup', debounceMs = 800) => {
 
     // Check email existence
     try {
-      const response = await checkEmailExists(email);
+      const response = await checkEmailExists(email, authMode);
 
       if (authMode === 'signup') {
         // if (response.success && response.exists) {
@@ -67,6 +67,9 @@ export const useEmailValidation = (authMode = 'signup', debounceMs = 800) => {
         // }
       }
       else if (authMode === 'login') {
+
+        console.log(response)
+
         if (response.success && !response.exists) {
           setEmailValidation({
             isValid: false,

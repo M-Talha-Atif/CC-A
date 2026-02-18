@@ -273,14 +273,21 @@ const page = () => {
       return;
     }
 
+    console.log("Checking Redirection for the feed")
+
     const hasCompletedOnboarding = user.profile?.onboardingCompleted;
     const hasVerifiedEmail = user.emailVerified;
+    const hasJoinedAnonymous = user.isAnonymous;
+    const hasApproved = user.status === "approved";
 
     const isAtEntryStep = currentStep === "auth";
 
-    if (hasCompletedOnboarding && hasVerifiedEmail && isAtEntryStep) {
+    if (hasCompletedOnboarding && hasVerifiedEmail && isAtEntryStep && hasJoinedAnonymous && hasApproved) {
+      console.log("This is true now")
       router.push("/feed");
     }
+
+    // console.log("This is false now")
   }, [isHydrated, isAuthenticated, user, currentStep, router]);
 
   useEffect(() => {
@@ -540,9 +547,27 @@ const page = () => {
 
           const { accessToken, refreshToken, user } = response.data;
 
-          console.log(user)
+          let canAccessProtectedPages = false;
+          try {
+            const statusResponse = await checkUserStatus();
+            canAccessProtectedPages = statusResponse?.data?.canAccessProtectedPages || false;
+          } catch (error) {
+            console.error("Failed to check user status:", error);
+          }
 
-          setUser(user);
+          // Create user object with canAccessProtectedPages
+          const userWithAccess = {
+            ...user,
+            canAccessProtectedPages: canAccessProtectedPages
+          };
+
+          console.log("Setting initial user with canAccessProtectedPages:", canAccessProtectedPages);
+
+          setUser(userWithAccess);
+
+          // console.log(user)
+
+          // setUser(user);
 
           if (typeof window !== "undefined" && accessToken && refreshToken) {
             localStorage.setItem("accessToken", accessToken);
@@ -629,12 +654,25 @@ const page = () => {
             // User has completed onboarding, redirect based on user type
             setLoadingMessage("Redirecting to your dashboard...");
 
-            console.log("Proceeding 2")
+            console.log("Proceeding 2 inside the profile completed and onboarding completed")
 
             try {
               const statusResponse = await checkUserStatus();
 
-              console.log("Status Response")
+              console.log("Status is stored")
+
+              // setUser({
+              //   ...user,
+              //   canAccessProtectedPages: statusResponse?.data?.canAccessProtectedPages || false
+              // });
+
+              setUser((prev) => ({
+                ...prev,
+                canAccessProtectedPages: statusResponse?.data?.canAccessProtectedPages || prev.canAccessProtectedPages || false
+              }));
+
+              console.log("User updated at login")
+              console.log(user)
 
               // Redirect based on user type and status
               if (user.userType === "couple") {
@@ -642,25 +680,33 @@ const page = () => {
               }
               else if (user.userType === "creative") {
 
+
+                console.log("Profile completion response data below")
+
                 console.log(statusResponse?.data)
 
                 // Profile Completed + approved + non anonymous -> go to home page
-                if (statusResponse?.data?.status === "approved" && statusResponse?.data?.isAnonymous === false) {
+                if (statusResponse?.data?.status === "approved" && (statusResponse?.data?.isAnonymous === false ||
+                  statusResponse?.data?.isAnonymous === undefined )
+                ) {
                   console.log("Redirected to home page")
                   router.push("/home"); // anonymous page
+                  return;
                 }
 
                 // Profile completed + pending → waiting page
                 else if (statusResponse?.data?.status === "pending" &&
                   statusResponse?.data?.profileCompleted === true) {
+                  console.log("Redirect to waiting")
                   router.push("/waiting");
+                  return;
                 }
 
                 // Profile completed + approved → feed
-                else if (statusResponse?.data?.canAccess &&
-                  statusResponse?.data?.profileCompleted === true) {
+                else if (statusResponse?.data?.canAccessProtectedPages) {
                   // Redirect creative users to /feed/new
                   router.push("/feed/new");
+                  return;
                 }
               }
               else {
@@ -685,6 +731,8 @@ const page = () => {
 
           // User needs to complete onboarding - determine next step
           setLoadingMessage("Loading your progress...");
+
+          console.log("Loading the progress")
 
           try {
             const progressResponse = await getOnboardingProgress();
@@ -729,6 +777,17 @@ const page = () => {
             const statusResponse = await checkUserStatus();
             console.log("Checking the status of user:")
             console.log(statusResponse)
+
+
+            // setUser({
+            //   ...user,
+            //   canAccessProtectedPages: statusResponse?.data?.canAccessProtectedPages || false
+            // });
+
+            setUser((prev) => ({
+              ...prev,
+              canAccessProtectedPages: statusResponse?.data?.canAccessProtectedPages || prev.canAccessProtectedPages || false
+            }));
 
             // Redirect based on user type and status
             if (user.userType === "couple") {
@@ -782,7 +841,7 @@ const page = () => {
             router.push("/waiting");
           }
         } catch (error) {
-          
+
           console.error("Authentication failed:", error);
           setLoadingMessage("");
 
@@ -988,6 +1047,17 @@ const page = () => {
 
           try {
             const statusResponse = await checkUserStatus();
+
+
+            // setUser({
+            //   ...user,
+            //   canAccessProtectedPages: statusResponse?.data?.canAccessProtectedPages || false
+            // });
+
+            setUser((prev) => ({
+              ...prev,
+              canAccessProtectedPages: statusResponse?.data?.canAccessProtectedPages || prev.canAccessProtectedPages || false
+            }));
 
             if (
               statusResponse.data &&

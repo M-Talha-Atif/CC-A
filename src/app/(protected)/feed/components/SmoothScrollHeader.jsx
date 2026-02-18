@@ -17,11 +17,18 @@ const SmoothScrollHeader = ({
   setIsFilterOpen,
   clearSearch,
   singlePostMode = false,
-  creativesSubFilter = "all"
+  creativesSubFilter = "all",
+  onSearch,
 }) => {
   const { isVisible, isAtTop } = useScrollVisibility();
-    const { isAuthenticated } =
-      useUserStore();
+  const { isAuthenticated } =
+    useUserStore();
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && searchTerm.trim().length >= 2) {
+      onSearch(); // Trigger search on Enter
+    }
+  };
 
   // // Override visibility when no posts
   // const isVisible = postsLength === 0 ? true : originalIsVisible;
@@ -81,6 +88,7 @@ const SmoothScrollHeader = ({
             <input
               type="text"
               value={searchTerm}
+              onKeyDown={handleKeyDown}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Search posts..."
               className="w-full px-4 py-2.5 pr-10 bg-white border border-gray-200 rounded-xl text-gray-700 placeholder-gray-400 focus:outline-none focus:border-gray-400 focus:ring-0 transition-colors"
@@ -133,7 +141,7 @@ const SmoothScrollHeader = ({
       </div>
 
       {/* Banner for "New" category - only show when selectedCategory is "New" */}
-      { (selectedCategory === "New" || (selectedCategory === "Popular" && isAuthenticated)) && (
+      {(selectedCategory === "New" || (selectedCategory === "Popular" && isAuthenticated)) && (
         <div className="w-full bg-black text-white py-2 overflow-hidden relative">
           <style jsx>{`
             @keyframes scroll {

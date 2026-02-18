@@ -31,7 +31,7 @@ export const useLikePost = ({
       // STEP 2: Get Current State
       // ============================================
       const currentPost = allPosts.find((post) => post.id === postId);
-      
+
       if (!currentPost) {
         console.error('❌ Post not found');
         return;
@@ -44,11 +44,23 @@ export const useLikePost = ({
 
       const willMeetThreshold =
         !isCurrentlyLiked && !currentPost.thresholdMet && newLikeCount >= 1;
-      
+
       const wouldLoseThreshold =
         isCurrentlyLiked && currentPost.thresholdMet && newLikeCount < 1;
 
+      // Check if post will drop below Popular threshold (3 likes)
+      const POPULAR_THRESHOLD = 3;
+      const willDropBelowPopularThreshold =
+        isCurrentlyLiked && 
+        selectedCategory === 'Popular' && 
+        currentPost.likes >= POPULAR_THRESHOLD && 
+        newLikeCount < POPULAR_THRESHOLD;
+
       console.log(`🔄 ${isCurrentlyLiked ? 'Unlike' : 'Like'} → Count: ${currentPost.likes} → ${newLikeCount}`);
+
+      if (willDropBelowPopularThreshold) {
+        console.log(`⚠️ Post will drop below Popular threshold (${POPULAR_THRESHOLD}), will remove from feed`);
+      }
 
       // ============================================
       // STEP 3: INSTANT UI Update (0ms delay)
@@ -95,7 +107,7 @@ export const useLikePost = ({
       // ============================================
       // STEP 4: Background API Sync (non-blocking)
       // ============================================
-      
+
       // Cancel previous request for this post if exists
       if (inflightRequestsRef.current.has(postId)) {
         console.log(`⚡ Canceling previous request for post ${postId}`);
@@ -107,7 +119,7 @@ export const useLikePost = ({
 
       try {
         const response = await likePostAPI({ postId });
-        
+
         // Check if this request was superseded
         if (inflightRequestsRef.current.get(postId) !== requestId) {
           console.log(`⏭️ Request superseded for post ${postId}`);
@@ -118,14 +130,13 @@ export const useLikePost = ({
           throw new Error(response?.error || 'Like operation failed');
         }
 
-        // ✅ FIX: Access correct nested data
-        // Your console shows: response.data.data.likes
+        // FIX: Access correct nested data
         const serverData = response.data.data || response.data;
-        
+
         console.log('✅ Server synced:', {
           likes: serverData.likes,
           liked: serverData.liked,
-          thresholdMet: serverData.thresholdMet
+          thresholdMet: serverData.thresholdMet,
         });
 
         // Sync with server (only if data differs)
@@ -148,9 +159,10 @@ export const useLikePost = ({
               : post
           )
         );
-
-        // Remove from feed if threshold changed
+        
+        // Remove from "New" feed when threshold is met (like)
         if (willMeetThreshold && selectedCategory === 'New') {
+          console.log(' Removing from New feed (threshold met)');
           setTimeout(() => {
             setAllPosts((prevPosts) =>
               prevPosts.filter((post) => post.id !== postId)
@@ -158,14 +170,25 @@ export const useLikePost = ({
           }, 800);
         }
 
+        // Remove from "Popular/Creatives" feed when threshold is lost (unlike drops below 1)
         if (wouldLoseThreshold && selectedCategory !== 'New') {
+          console.log(' Removing from feed (threshold lost)');
           setTimeout(() => {
             setAllPosts((prevPosts) =>
               prevPosts.filter((post) => post.id !== postId)
             );
-          }, 800);
+          }, 400);
         }
 
+        //  Remove from "Popular" feed when likes drop below 3
+        if (willDropBelowPopularThreshold) {
+          console.log(` Removing from Popular feed (likes dropped below ${POPULAR_THRESHOLD})`);
+          setTimeout(() => {
+            setAllPosts((prevPosts) =>
+              prevPosts.filter((post) => post.id !== postId)
+            );
+          }, 400);
+        }
       } catch (error) {
         console.error('❌ Like failed, rolling back:', error);
 

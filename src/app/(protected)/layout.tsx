@@ -159,6 +159,16 @@ const ProtectedLayout = ({
       const promises = [];
       const dataNeeded = [];
 
+      console.log("here the user data we got is:")
+      console.log(user)
+
+      if( user && user.status === "approved" && user.isAnonymous === false ) {
+        router.push("/home")
+      }
+      if ( user && (user?.status === "pending") ) {
+        router.push("/waiting");
+      }
+
       // Check what data is missing and fetch accordingly
       if (!user?.referralCode && !user?.personalReferralCode) {
         promises.push(getReferralCode());

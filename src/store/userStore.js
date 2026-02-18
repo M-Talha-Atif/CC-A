@@ -2,6 +2,7 @@
 
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
+import { checkUserStatus } from "@root/action";
 
 const useUserStore = create(
   persist(
@@ -9,26 +10,35 @@ const useUserStore = create(
       user: {
         rank: null,
         referralCode: null,
+        canAccessProtectedPages: false,
       },
       isAuthenticated: false,
       hasHydrated: false,
       currentFeedCategory: null,
       isTokenRefreshing: false,
       lastTokenRefresh: null,
-      isLoggingOut: false, // ADD THIS NEW STATE
+      isLoggingOut: false,
 
       setUser: (userData) =>
-        set((state) => ({
-          user: { ...state.user, ...userData },
+        set((state) => (
+          { 
+          user: { ...state.user, ...userData,
+              canAccessProtectedPages: userData.canAccessProtectedPages !== undefined 
+              ? userData.canAccessProtectedPages 
+              : state.user.canAccessProtectedPages 
+           },
           isAuthenticated: true,
           currentFeedCategory: state.currentFeedCategory || "new",
-        })),
+        }
+      
+      )),
 
       clearUser: () =>
         set({
           user: {
             rank: null,
             referralCode: null,
+            canAccessProtectedPages: false,
           },
           isAuthenticated: false,
           currentFeedCategory: "couples",
@@ -75,6 +85,8 @@ const useUserStore = create(
         console.log("Initializing auth - attempting token refresh...");
         return await state.refreshToken();
       },
+
+      
     }),
     {
       name: "userStorage",

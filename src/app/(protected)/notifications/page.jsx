@@ -41,6 +41,8 @@ const NotificationsPage = () => {
     try {
       const data = await getNotifications(50, 0);
       setNotifications(data.notifications || []);
+      console.log("Notificaitons data:")
+      console.log(data)
       setUnreadCount(data.unreadCount || 0);
     } catch (error) {
       console.error("Error fetching notifications:", error);
@@ -250,7 +252,7 @@ const NotificationsPage = () => {
               <div
                 key={notification.id}
                 onClick={() => handleNotificationClick(notification)}
-                className={`py-4 px-4 -mx-4 cursor-pointer transition-colors duration-200 hover:bg-gray-50 border-b border-gray-100 ${!notification.isRead ? "" : ""
+                className={`py-4 px-4 -mx-4 cursor-pointer transition-colors duration-200 hover:bg-gray-50 border-b border-gray-100 ${!notification.isRead ? "" : "bg-gray-100"
                   }`}
               >
                 <div className="flex items-start justify-between">

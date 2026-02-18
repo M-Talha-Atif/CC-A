@@ -8,11 +8,16 @@ import {
   getPoints,
   checkUserStatus,
   getOnboardingProgress,
+  logout
 } from "../../../../action";
 import useUserStore from "../../../store/userStore";
 import Loader from "../../../components/Loader";
 import { useRouter } from "next/navigation";
 import { toast, Toaster } from "sonner";
+import { clearRegistrationStorage } from "@/utils/saveToLocal";
+
+
+
 
 const HomePage = () => {
   const { user, setUser, isAuthenticated, hasHydrated, clearUser } =
@@ -23,33 +28,6 @@ const HomePage = () => {
   const [hasRedirected, setHasRedirected] = useState(false);
   const [isCheckingStatus, setIsCheckingStatus] = useState(false);
 
-  // Helper function to handle logout
-  const handleLogoutAndRedirect = async (message) => {
-    try {
-      // Show message
-      toast.error(message);
-
-      // Background cleanup
-      logout().catch((error) => {
-        console.error("Background logout cleanup failed:", error);
-      });
-
-      // Small delay to show message, then clear user and redirect
-      setTimeout(() => {
-        clearUser();
-        window.location.href =
-          "/login?flow=creative&step=login-choice&mode=login";
-      }, 2000);
-    } catch (error) {
-      console.error("Logout error:", error);
-      // Still clear and redirect even if something fails
-      setTimeout(() => {
-        clearUser();
-        window.location.href =
-          "/login?flow=creative&step=login-choice&mode=login";
-      }, 2000);
-    }
-  };
 
   // Helper function to safely handle errors and show toast
   const handleError = (error, fallbackMessage = "An error occurred") => {
@@ -85,6 +63,8 @@ const HomePage = () => {
   };
 
   useEffect(() => {
+
+    console.log("hey we are at home page")
     // Wait for store hydration
     if (!hasHydrated) return;
 
@@ -116,6 +96,27 @@ const HomePage = () => {
           !onboardingResponse?.data ||
           !onboardingResponse.data.progress?.onboardingCompleted
         ) {
+          if (user && user.emailVerified === false) {
+            // setUser(null);
+            localStorage.removeItem("accessToken");
+            localStorage.removeItem("refreshToken");
+            // Clear session storage
+            sessionStorage.removeItem("user_cache");
+            sessionStorage.removeItem("last_refresh");
+
+            // 2. Clear local storage
+            clearRegistrationStorage();
+
+            // Clear Zustand store
+            clearUser();
+
+            // Server logout (clear cookies)
+            await logout();
+
+
+          }
+          console.log("The user exists here and we got the user: ")
+          console.log(user)
           console.log("Onboarding not completed, redirecting to login");
           safeRedirect(
             "/login?flow=creative&step=login-choice&mode=login",
@@ -126,6 +127,14 @@ const HomePage = () => {
 
         // Check user status
         const statusResponse = await checkUserStatus();
+
+        console.log("Status response at home page")
+        console.log(statusResponse)
+
+        setUser({
+          ...user,
+          canAccessProtectedPages: statusResponse?.data?.canAccessProtectedPages || false
+        });
         console.log("Home Page Status Check:", statusResponse?.data);
 
         //  CRITICAL FIX: If user is approved + non-anonymous, STAY on /home
@@ -149,21 +158,13 @@ const HomePage = () => {
           return;
         }
 
-        
+
         if (statusResponse?.data && statusResponse.data.status === "rejected") {
           console.log("User status is rejected, redirecting to waiting");
           safeRedirect("/waiting", "User status is rejected");
           return;
         }
 
-        // // Handle rejected status - logout and redirect
-        // if (statusResponse?.data && statusResponse.data.status === "rejected") {
-        //   console.log("User status is rejected, logging out");
-        //   // await handleLogoutAndRedirect(
-        //   //   "Your account was rejected."
-        //   // );
-        //   return;
-        // }
 
         // If user status is pending, redirect to waiting page
         if (statusResponse?.data && statusResponse.data.status === "pending") {
@@ -193,14 +194,6 @@ const HomePage = () => {
 
         setIsCheckingStatus(false);
 
-        // Handle user flow based on whether they just completed onboarding
-        // if (user.isNewUser === false && !justCompletedOnboarding) {
-        //   console.log("Redirecting existing user to feed");
-        //   safeRedirect("/feed/new", "Existing user flow");
-        //   return;
-        // }
-
-    
 
 
         // If user just completed onboarding OR if user is explicitly new
@@ -337,6 +330,10 @@ const HomePage = () => {
 
       if (result?.success) {
         toast.success("Anonymous mode activated successfully!");
+        setUser((prev) => ({
+          ...prev,
+          canAccessProtectedPages: true
+        }));
         setTimeout(() => {
           safeRedirect("/feed/new", "Anonymous mode activated");
         }, 1000);
@@ -388,19 +385,7 @@ const HomePage = () => {
     return renderLoader();
   }
 
-  // if (user && user.isNewUser === undefined) {
-  //   return renderLoader();
-  // }
 
-  // if (user && user.isNewUser === false && !hasRedirected && user.lastLoginAt === null) {
-  //   console.log("Early redirect: User is not new");
-  //   safeRedirect("/feed/new", "Early redirect - not new user");
-  //   return renderLoader();
-  // }
-
-  // if (user.isNewUser !== true) {
-  //   return null;
-  // }
 
   return (
     <div className="max-w-md mx-auto px-7 md:px-6 py-2 mt-12">

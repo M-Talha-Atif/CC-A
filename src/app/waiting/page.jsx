@@ -12,7 +12,7 @@ import { clearRegistrationStorage } from "@/utils/saveToLocal";
 const Page = () => {
   const router = useRouter();
   const [isChecking, setIsChecking] = useState(false);
-  const { isAuthenticated, hasHydrated, clearUser, user } = useUserStore();
+  const { isAuthenticated, hasHydrated, clearUser, user , setUser} = useUserStore();
   const { openHelpCenter } = useHelpCenterStore();
   const [showRejectedPopup, setShowRejectedPopup] = useState(false);
 
@@ -21,7 +21,7 @@ const Page = () => {
       // Clear session storage
       sessionStorage.removeItem("user_cache");
       sessionStorage.removeItem("last_refresh");
-      
+
       // 2. Clear local storage
       clearRegistrationStorage();
 
@@ -59,6 +59,11 @@ const Page = () => {
         setIsChecking(true);
         const statusResponse = await checkUserStatus();
 
+        setUser({
+          ...user,
+          canAccessProtectedPages: statusResponse?.data?.canAccessProtectedPages || false
+        });
+
         if (statusResponse.data && statusResponse.data.status === "rejected") {
           setShowRejectedPopup(true);
           setIsChecking(false);
@@ -95,6 +100,11 @@ const Page = () => {
 
       try {
         const statusResponse = await checkUserStatus();
+
+        setUser({
+          ...user,
+          canAccessProtectedPages: statusResponse?.data?.canAccessProtectedPages || false
+        });
 
         if (statusResponse.data && statusResponse.data.status === "rejected") {
           clearInterval(statusCheckInterval);
@@ -165,7 +175,7 @@ const Page = () => {
         }}
       />
 
-      {showRejectedPopup && (
+      {/* {showRejectedPopup && (
         <SimplePopup
           message="Application Status Update
 Thank you for your interest in joining CUNO COVO, User. After careful review of your application, 
@@ -174,7 +184,7 @@ we regret to inform you that we are unable to approve your account at this time.
           onClose={handleRejectedPopupClose}
           onModalClose={() => setShowRejectedPopup(false)}
         />
-      )}
+      )} */}
       <div className="flex w-full justify-end p-4">
         <Logout />
       </div>

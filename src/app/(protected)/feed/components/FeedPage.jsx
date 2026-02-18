@@ -85,6 +85,7 @@ const FeedPage = ({ params = {}, singlePostMode = false, postId = null }) => {
   const [globalSearchResults, setGlobalSearchResults] = useState([]);
   const [isGlobalSearching, setIsGlobalSearching] = useState(false);
   const [globalSearchError, setGlobalSearchError] = useState(null);
+  const [hasSearched, setHasSearched] = useState(false);
 
   // Get category from URL params
   const urlCategory = routeParams.category;
@@ -172,6 +173,30 @@ const FeedPage = ({ params = {}, singlePostMode = false, postId = null }) => {
 
   }, [singlePostMode, postId, router]);
 
+  useEffect(() => {
+    if (!hasHydrated) return;
+
+    const urlCategory = routeParams.category;
+    const protectedCategories = ["new", "bookmark", "my-posts", "chatrooms"];
+
+
+    if (protectedCategories.includes(urlCategory)) {
+      if (!isAuthenticated) {
+        console.log(`⚠️ FeedPage: Unauthenticated access to ${urlCategory}, redirecting to popular`);
+        router.replace("/feed/popular");
+        return;
+      }
+
+
+      // Additional safety check
+      if (user && user.status === "approved" && user.isAnonymous === false) {
+        console.log("Redirected from line no 205 of FeedPage to home")
+        router.replace("/home");
+      }
+
+    }
+  }, [hasHydrated, isAuthenticated, routeParams.category, router, user]);
+
   // Optional: Clean up on unmount (allows revisit after navigating away)
   useEffect(() => {
     return () => {
@@ -194,8 +219,6 @@ const FeedPage = ({ params = {}, singlePostMode = false, postId = null }) => {
       router.replace("/feed/popular");
     }
   }, [hasHydrated, isAuthenticated, routeParams.category, router]);
-
-
 
   // 3. Update getCategoriesForUser array
   const getCategoriesForUser = useMemo(() => {
@@ -298,7 +321,7 @@ const FeedPage = ({ params = {}, singlePostMode = false, postId = null }) => {
   const [singlePostError, setSinglePostError] = useState(null);
 
   // Like Post Hook
-  const { handleLike } = useLikePost({  
+  const { handleLike } = useLikePost({
     isAuthenticated,
     allPosts,
     setAllPosts,
@@ -416,6 +439,10 @@ const FeedPage = ({ params = {}, singlePostMode = false, postId = null }) => {
           setLoadingMore(true);
         }
 
+        const currentSearchTerm = searchTerm.trim();
+
+        // console.log(creativesSubFilter + " is creatives sub filter value")
+
         // Check if we should use global search
         const shouldUseGlobalSearch = searchTerm.trim().length >= 2;
 
@@ -424,21 +451,18 @@ const FeedPage = ({ params = {}, singlePostMode = false, postId = null }) => {
           setIsGlobalSearching(true);
 
           // Use global search endpoint
-          const categoryFilter =
-            category !== "Couples" &&
-              category !== "Bookmark" &&
-              creativesSubFilter !== "all"
+          const subFilterValue =
+            creativesSubFilter !== "all"
               ? creativesSubFilter
-              : category === "Creatives"
-                ? "Photographer,Videographer,Florist,Planner"
-                : "";
+              : "all";;
 
           data = await globalSearch(
-            searchTerm.trim(),
+            currentSearchTerm,
             page,
             POSTS_PER_PAGE,
             sortBy,
-            categoryFilter
+            category,        // mainCategory
+            subFilterValue   // subFilter
           );
 
           // Transform the response to match existing structure
@@ -553,14 +577,16 @@ const FeedPage = ({ params = {}, singlePostMode = false, postId = null }) => {
         abortControllerRef.current = null;
       }
     },
-    [searchTerm, sortBy, hasHydrated, selectedCategory, creativesSubFilter]
+    [sortBy, hasHydrated, selectedCategory, creativesSubFilter, searchTerm]
   );
 
   const filteredAndSortedPosts = useMemo(() => {
     // If we have a search term, use global search results
-    if (searchTerm.trim().length >= 2) {
-      return globalSearchResults; // This is correctly paginated from the backend
+    // ONLY use search results if we've actually performed a search
+    if (hasSearched && searchTerm.trim().length >= 2) {
+      return globalSearchResults;
     }
+
 
     // Otherwise use the existing local filtering logic
     let filteredPosts = allPosts;
@@ -574,6 +600,7 @@ const FeedPage = ({ params = {}, singlePostMode = false, postId = null }) => {
     ) {
       filteredPosts = allPosts.filter((post) => {
         const categories = post.categories || [];
+        // console.log(creativesSubFilter + "this is actual sub-filter")
         return categories.some(
           (cat) => cat.toLowerCase() === creativesSubFilter.toLowerCase()
         );
@@ -653,40 +680,41 @@ const FeedPage = ({ params = {}, singlePostMode = false, postId = null }) => {
     allPosts,
     globalSearchResults,
     searchTerm,
+    hasSearched, // field if searched
     sortBy,
     selectedCategory,
     creativesSubFilter,
   ]);
 
-  useEffect(() => {
-    if (searchTimeoutRef.current) {
-      clearTimeout(searchTimeoutRef.current);
-    }
+  // useEffect(() => {
+  //   if (searchTimeoutRef.current) {
+  //     clearTimeout(searchTimeoutRef.current);
+  //   }
 
-    // If search term is empty, fetch regular feed
-    if (!searchTerm.trim()) {
-      fetchPosts(1, selectedCategory, true);
-      return;
-    }
+  //   // If search term is empty, fetch regular feed
+  //   if (!searchTerm.trim()) {
+  //     fetchPosts(1, selectedCategory, true);
+  //     return;
+  //   }
 
-    // If search term is too short, don't search
-    if (searchTerm.trim().length < 2) {
-      return;
-    }
+  //   // If search term is too short, don't search
+  //   if (searchTerm.trim().length < 2) {
+  //     return;
+  //   }
 
-    // Debounce the search
-    searchTimeoutRef.current = setTimeout(() => {
-      if (mountedRef.current) {
-        fetchPosts(1, selectedCategory, true);
-      }
-    }, 300); // 300ms debounce
+  //   // Debounce the search
+  //   searchTimeoutRef.current = setTimeout(() => {
+  //     if (mountedRef.current) {
+  //       fetchPosts(1, selectedCategory, true);
+  //     }
+  //   }, 300); // 300ms debounce
 
-    return () => {
-      if (searchTimeoutRef.current) {
-        clearTimeout(searchTimeoutRef.current);
-      }
-    };
-  }, [searchTerm, selectedCategory, sortBy, creativesSubFilter]);
+  //   return () => {
+  //     if (searchTimeoutRef.current) {
+  //       clearTimeout(searchTimeoutRef.current);
+  //     }
+  //   };
+  // }, [searchTerm, selectedCategory, sortBy, creativesSubFilter]);
 
   useEffect(() => {
     const currentObserverRef = observerRef.current;
@@ -810,7 +838,7 @@ const FeedPage = ({ params = {}, singlePostMode = false, postId = null }) => {
 
     observer.observe(currentObserverRef);
     return () => observer.disconnect();
-  }, [hasMore, searchTerm, loading, loadingMore, fetchError]);
+  }, [hasMore, loading, loadingMore, fetchError]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -926,7 +954,21 @@ const FeedPage = ({ params = {}, singlePostMode = false, postId = null }) => {
 
   const clearSearch = useCallback(() => {
     setSearchTerm("");
+    setHasSearched(false);
+    setGlobalSearchResults([]);
+    setGlobalSearchError(null);
+    setIsGlobalSearching(false);
   }, []);
+
+
+  // useEffect(() => {
+  //   // Clear search results when search term is cleared
+  //   if (!searchTerm.trim()) {
+  //     setGlobalSearchResults([]);
+  //     setGlobalSearchError(null);
+  //     setIsGlobalSearching(false);
+  //   }
+  // }, [searchTerm]);
 
   // Enhanced retry function for failed requests
   const handleRetry = useCallback(() => {
@@ -1387,6 +1429,8 @@ const FeedPage = ({ params = {}, singlePostMode = false, postId = null }) => {
           return;
         }
 
+        console.log("Post has no comments")
+
         // If post has no comments, show modal for user to decide
         setChatroomModal({ isOpen: true, post });
       } catch (error) {
@@ -1443,49 +1487,60 @@ const FeedPage = ({ params = {}, singlePostMode = false, postId = null }) => {
 
   const [isCheckingEligibility, setIsCheckingEligibility] = useState(false);
 
-  const handleCreatePost = useCallback(async () => {
+  // const handleCreatePost = useCallback(async () => {
+  //   if (!isAuthenticated) {
+  //     setShowLoginPrompt(true);
+  //     return;
+  //   }
+
+  //   // Start loading
+  //   setIsCheckingEligibility(true);
+
+  //   try {
+  //     // Check if user is eligible to post
+  //     const eligibilityResponse = await checkPostingEligibility();
+
+  //     if (!eligibilityResponse.success) {
+  //       toast.error("Failed to check posting eligibility");
+  //       return;
+  //     }
+
+  //     const { canPost, likesRemaining } = eligibilityResponse.data;
+
+  //     if (!canPost) {
+  //       toast.error(
+  //         `Like ${likesRemaining} post${likesRemaining !== 1 ? "s" : ""} to unlock posting`,
+  //         {
+  //           duration: 3000,
+  //         }
+  //       );
+  //       return;
+  //     }
+
+  //     // User is eligible, proceed to create post
+  //     const currentPath = `/feed/${urlMappings[selectedCategory] || 'popular'}`;
+  //     router.push(`/feed/create-post?source=${encodeURIComponent(currentPath)}`);
+  //   } catch (error) {
+  //     console.error("Error checking eligibility:", error);
+  //     toast.error("Something went wrong. Please try again.");
+  //   } finally {
+  //     // Stop loading
+  //     setIsCheckingEligibility(false);
+  //   }
+  // }, [isAuthenticated, router, selectedCategory]);
+
+  // Add this before the return statement, after all your other logic
+  const handleCreatePost = useCallback(() => {
     if (!isAuthenticated) {
       setShowLoginPrompt(true);
       return;
     }
 
-    // Start loading
-    setIsCheckingEligibility(true);
-
-    try {
-      // Check if user is eligible to post
-      const eligibilityResponse = await checkPostingEligibility();
-
-      if (!eligibilityResponse.success) {
-        toast.error("Failed to check posting eligibility");
-        return;
-      }
-
-      const { canPost, likesRemaining } = eligibilityResponse.data;
-
-      if (!canPost) {
-        toast.error(
-          `Like ${likesRemaining} post${likesRemaining !== 1 ? "s" : ""} to unlock posting`,
-          {
-            duration: 3000,
-          }
-        );
-        return;
-      }
-
-      // User is eligible, proceed to create post
-      const currentPath = `/feed/${urlMappings[selectedCategory] || 'popular'}`;
-      router.push(`/feed/create-post?source=${encodeURIComponent(currentPath)}`);
-    } catch (error) {
-      console.error("Error checking eligibility:", error);
-      toast.error("Something went wrong. Please try again.");
-    } finally {
-      // Stop loading
-      setIsCheckingEligibility(false);
-    }
+    const currentPath = `/feed/${urlMappings[selectedCategory] || "popular"}`;
+    router.push(`/feed/create-post?source=${encodeURIComponent(currentPath)}`);
   }, [isAuthenticated, router, selectedCategory]);
 
-  // Add this before the return statement, after all your other logic
+
   const displayCategory = useMemo(() => {
     if (
       singlePostMode &&
@@ -1497,6 +1552,48 @@ const FeedPage = ({ params = {}, singlePostMode = false, postId = null }) => {
     }
     return selectedCategory;
   }, [singlePostMode, selectedCategory]);
+
+  // Reset hasSearched when user starts typing after a search
+  // const handleSearchTermChange = useCallback((newValue) => {
+  //   setSearchTerm(newValue);
+
+  //   // Reset search state when user modifies the search term
+  //   if (hasSearched) {
+  //     setHasSearched(false);
+  //     setGlobalSearchResults([]);
+  //     setGlobalSearchError(null);
+  //     setIsGlobalSearching(false);
+  //   }
+  // }, [hasSearched]);
+
+
+  // AFTER
+  const handleSearchTermChange = useCallback((newValue) => {
+    setSearchTerm(newValue);
+
+    // Reset search state when user modifies the search term
+    if (hasSearched) {
+      setHasSearched(false);
+      setGlobalSearchResults([]);
+      setGlobalSearchError(null);
+      setIsGlobalSearching(false);
+    }
+
+    if (!newValue.trim()) {
+      fetchPosts(1, selectedCategory, true);
+    }
+  }, [hasSearched, fetchPosts, selectedCategory]);
+
+
+  const handleSearch = useCallback(() => {
+    if (searchTerm.trim().length >= 2) {
+      console.log('Manual search triggered:', searchTerm);
+      setHasSearched(true); //  Mark that we've performed a search
+      fetchPosts(1, selectedCategory, true);
+    }
+  }, [searchTerm, selectedCategory, fetchPosts]);
+
+
 
   // Don't render anything until hydration is complete
   if (!hasHydrated) {
@@ -1525,13 +1622,14 @@ const FeedPage = ({ params = {}, singlePostMode = false, postId = null }) => {
       {/* New Smooth Header Component */}
       <SmoothScrollHeader
         searchTerm={searchTerm}
-        setSearchTerm={setSearchTerm}
+        setSearchTerm={handleSearchTermChange}
         selectedCategory={displayCategory}
         setIsDropdownOpen={setIsDropdownOpen}
         setIsFilterOpen={setIsFilterOpen}
         clearSearch={clearSearch}
         singlePostMode={singlePostMode}
         creativesSubFilter={creativesSubFilter}
+        onSearch={handleSearch}
       />
 
       {/* Category Dropdown Modal */}
@@ -1746,10 +1844,10 @@ const FeedPage = ({ params = {}, singlePostMode = false, postId = null }) => {
                   </button>
                 </div>
               </div>
-            ) : posts.length === 0 ? (
+            ) : posts.length === 0 && (!searchTerm.trim() || hasSearched) ? (
               <div className="text-center pt-16">
                 <p className="text-gray-500">
-                  {searchTerm
+                  {hasSearched && searchTerm.trim()
                     ? `No posts found matching "${searchTerm}"`
                     : "No posts found."}
                 </p>
@@ -1807,7 +1905,7 @@ const FeedPage = ({ params = {}, singlePostMode = false, postId = null }) => {
                 )}
 
                 {/* Search results info */}
-                {searchTerm.trim() && (
+                {hasSearched && searchTerm.trim() && posts.length > 0 && ( // posts.length > 0
                   <div className="text-center py-8">
                     <p className="text-gray-500 text-sm">
                       {posts.length} post{posts.length !== 1 ? "s" : ""} found
